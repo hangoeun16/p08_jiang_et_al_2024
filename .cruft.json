@@ -1,0 +1,42 @@
+{
+  "template": "https://github.com/backofficedev/cookiecutter_chartbook",
+  "commit": "a52959a3dfb4296855c3d667463f0b8110424e66",
+  "checkout": null,
+  "context": {
+    "cookiecutter": {
+      "project_name": "Monetary Tightening and US Bank Fragility",
+      "project_slug": "p08_jiang_et_al_2024",
+      "project_description": "Replicates Table 1, Table A1, and Figure A1 from Jiang et al. (2024) using data from WRDS, then updates the analysis through 2025 by scraping real-time data from FFIEC to monitor current mark-to-market losses and uninsured deposit exposure in US banks.",
+      "author_name": "Summer Han, Joe Wang",
+      "author_email": "hangoeun@uchicago.edu, joew@uchicago.edu",
+      "python_version": "3.12",
+      "environment_manager": "conda",
+      "include_latex_reports": "True",
+      "include_jupyter_notebooks": "True",
+      "include_r_scripts": "True",
+      "include_stata_scripts": "TRue",
+      "include_chartbook": "True",
+      "include_github_actions": "True",
+      "include_fred": "True",
+      "include_fed_yield_curve": "True",
+      "include_ofr_api": "True",
+      "include_bloomberg": "True",
+      "include_crsp_stock": "True",
+      "include_crsp_compustat": "True",
+      "_copy_without_render": [
+        "*.bst",
+        "*.sty",
+        "*.eps",
+        "*.ipe",
+        "*.png",
+        "*.pdf",
+        "*.tex",
+        "*.bib",
+        ".github/workflows/*.yml"
+      ],
+      "_template": "https://github.com/backofficedev/cookiecutter_chartbook",
+      "_commit": "a52959a3dfb4296855c3d667463f0b8110424e66"
+    }
+  },
+  "directory": null
+}
