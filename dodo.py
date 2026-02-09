@@ -88,6 +88,18 @@ def task_config():
 def task_pull():
     """Pull data from external sources"""
     yield {
+        "name": "wrds",
+        "doc": "Pull data from WRDS",
+        "actions": [
+            "ipython ./src/settings.py",
+            "ipython ./src/pull_WRDS.py",
+        ],
+        "targets": [DATA_DIR / "wrds.parquet"],
+        "file_dep": ["./src/settings.py", "./src/pull_WRDS.py"],
+        "clean": [],
+    }
+'''
+    yield {
         "name": "fred",
         "doc": "Pull data from FRED",
         "actions": [
@@ -163,16 +175,19 @@ def task_summary_stats():
         "clean": True,
     }
 
+'''
+
+
 
 def task_example_plot():
     """Example plots"""
-    file_dep = [Path("./src") / file for file in ["example_plot.py", "pull_fred.py"]]
+    file_dep = [Path("./src") / file for file in ["generate_chart.py", "pull_wrds.py"]]
     file_output = ["example_plot.png"]
     targets = [OUTPUT_DIR / file for file in file_output]
 
     return {
         "actions": [
-            "ipython ./src/example_plot.py",
+            "ipython ./src/generate_chart.py",
         ],
         "targets": targets,
         "file_dep": file_dep,
@@ -180,6 +195,7 @@ def task_example_plot():
     }
 
 
+'''
 def task_chart_repo_rates():
     """Example charts for Chartbook"""
     file_dep = [
@@ -442,3 +458,4 @@ def task_example_stata_script():
         "clean": True,
         "verbosity": 2,
     }
+'''
