@@ -1,0 +1,4 @@
+Name,Metadata Complete,Object Type,Identifier,Pipeline,Missing Fields,Page Link
+Monetary Tightening and US Bank Fragility,False,pipeline,P0,P0,"build_commands, os_compatibility, git_repo_URL",../index.html
+FFEIC Call Report Data,False,dataframe,RCFD_Series_1,P0,links_to_data_providers,../dataframes/P0/RCFD_Series_1.html
+Total Cash by Banks,False,chart,total_cash,P0,"data_frequency, observation_period, lag_in_data_release, data_release_timing",../charts/P0.total_cash.html
