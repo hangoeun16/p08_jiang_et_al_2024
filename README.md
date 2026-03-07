@@ -1,176 +1,160 @@
-Monetary Tightening and US Bank Fragility
-=========================================
+# Monetary Tightening and U.S. Bank Fragility — Replication
 
-## About this project
+Replicates **Table 1**, **Table A1**, and **Figure A1** from:
 
-Replicates Table 1, Table A1, and Figure A1 from Jiang et al. (2024) using data from WRDS, then updates the analysis through 2025 by scraping real-time data from FFIEC to monitor current mark-to-market losses and uninsured deposit exposure in US banks.
+> Jiang, E., Matvos, G., Piskorski, T., & Seru, A. (2024). "Monetary Tightening and U.S. Bank Fragility in 2023: Mark-to-Market Losses and Uninsured Depositor Runs?" *Journal of Finance*.
+
+The pipeline uses Q1 2022 WRDS Call Report balance sheet data and iShares ETF price changes (Q1 2022 → Q1 2023) to compute mark-to-market (MTM) losses for all U.S. commercial banks, classified by size: Small, Large non-GSIB, and GSIB.
+
+**Team members:** Summer Han, Joe Wang (FINM32900 Final Project)
+
+---
 
 ## Quick Start
 
-The quickest way to run code in this repo is to use the following steps.
+### 1. Create the environment
 
-You must have TexLive (or another LaTeX distribution) installed on your computer and available in your path.
-You can do this by downloading and installing it from here ([windows](https://tug.org/texlive/windows.html#install)
-and [mac](https://tug.org/mactex/mactex-download.html) installers).
-
-
-First, you must have the `conda` package manager installed (e.g., via Anaconda). However, I recommend using `mamba`, via [miniforge](https://github.com/conda-forge/miniforge) as it is faster and more lightweight than `conda`.
-
-Create and activate the conda environment:
 ```bash
 conda env create -f environment.yml
 conda activate p08_jiang_et_al_2024
 ```
 
-Finally, run the project tasks:
+You must also have TeX Live (or another LaTeX distribution) installed for the final PDF report ([macOS](https://tug.org/mactex/mactex-download.html), [Windows](https://tug.org/texlive/windows.html#install)).
+
+### 2. Configure credentials
+
+```bash
+cp .env.example .env
+# Edit .env and set WRDS_USERNAME=your_wrds_username
+```
+
+### 3. Run the full pipeline
+
 ```bash
 doit
 ```
-And that's it!
 
+---
 
-### Running R Code
+## Pipeline Stages
 
-This project includes R code. The R dependencies are managed alongside Python dependencies.
+| Stage | Description |
+|-------|-------------|
+| `doit config` | Create `_data/` and `_output/` directories |
+| `doit pull:wrds` | Pull WRDS Call Report data (RCON/RCFD series) |
+| `doit pull:etf` | Pull iShares ETF prices via yfinance |
+| `doit analysis` | Compute MTM losses, save results to `_data/` |
+| `doit outputs` | Generate LaTeX tables and Figure A1 in `_output/` |
+| `doit convert_notebooks` | Convert `.py` percent notebooks → `.ipynb` via jupytext |
+| `doit run_notebooks` | Execute notebooks and export to HTML |
+| `doit compile_latex` | Build PDF report via latexmk |
 
-The `environment.yml` file includes R packages. After creating the conda environment, R will be available.
+---
 
-Make sure to uncomment the RMarkdown task from the `dodo.py` file, then run `doit` as before.
+## Project Structure
 
-
-### Other commands
-
-#### Unit Tests and Doc Tests
-
-You can run the unit test, including doctests, with the following command:
 ```
-pytest --doctest-modules
+p08_jiang_et_al_2024/
+├── src/
+│   ├── settings.py              # Configuration (DATA_DIR, WRDS_USERNAME, dates)
+│   │
+│   ├── pull_wrds.py             # Pull WRDS Call Report data (4 series)
+│   ├── pull_etf_data.py         # Pull iShares ETF prices via yfinance
+│   │
+│   ├── clean_data.py            # Extract tidy per-bank balance sheet items
+│   ├── calc_mtm_losses.py       # Core MTM loss methodology (RMBS multiplier, losses)
+│   ├── calc_table1.py           # Aggregate Table 1 statistics by bank size
+│   ├── calc_summary_stats.py    # Balance sheet composition for Table A1 / Figure A1
+│   │
+│   ├── run_analysis.py          # Orchestrates full analysis pipeline
+│   │
+│   ├── create_table1.py         # Generate Table 1 as LaTeX (.tex)
+│   ├── create_table_a1.py       # Generate Table A1 as LaTeX (.tex)
+│   ├── create_figure_a1.py      # Generate Figure A1 as PDF/PNG
+│   │
+│   ├── 01_data_tour.py          # Notebook: data overview (percent format → .ipynb)
+│   ├── 02_replication.py        # Notebook: replication results + updated analysis
+│   │
+│   ├── test_calc_mtm_losses.py  # Unit tests for MTM calculation
+│   └── test_clean_data.py       # Unit tests for data cleaning
+│
+├── reports/
+│   ├── main.tex                 # LaTeX report (inputs tables/figures from _output/)
+│   ├── bibliography.bib         # References
+│   └── my_article_header.sty   # LaTeX style
+│
+├── _data/                       # Auto-generated data cache (gitignored)
+├── _output/                     # Auto-generated tables, figures, notebooks (gitignored)
+├── data_manual/                 # Version-controlled manual data (if any)
+│
+├── dodo.py                      # PyDoit task runner (like a Makefile)
+├── .env.example                 # Template for .env credentials
+├── .env                         # Local credentials (gitignored — never commit)
+├── requirements.txt             # pip dependencies
+├── environment.yml              # conda environment
+└── pyproject.toml               # pytest configuration
 ```
 
-You can build the documentation with:
+---
+
+## Data Sources
+
+| Data | Source | How pulled |
+|------|--------|------------|
+| Call Report balance sheets | WRDS (`bank.wrds_call_rcon_1/2`, `rcfd_1/2`) | `pull_wrds.py` via `wrds` Python package |
+| iShares Treasury ETFs (SHV, SHY, IEI, IEF, TLH, TLT) | Yahoo Finance | `pull_etf_data.py` via `yfinance` |
+| iShares MBS ETF (MBB) | Yahoo Finance | `pull_etf_data.py` via `yfinance` |
+| S&P Treasury Bond Index proxy (GOVT) | Yahoo Finance | `pull_etf_data.py` via `yfinance` |
+
+WRDS access requires an institutional subscription. Set `WRDS_USERNAME` in `.env`.
+
+---
+
+## Configuration
+
+All settings are managed via `src/settings.py` and a `.env` file in the project root. Copy `.env.example` to `.env` and fill in your values:
+
 ```
-rm ./src/.pytest_cache/README.md
-jupyter-book build -W ./
+WRDS_USERNAME=your_wrds_username
+START_DATE=2021-12-31       # WRDS pull range start
+END_DATE=2023-09-30         # WRDS pull range end
+REPORT_DATE=2022-03-31      # Balance sheet snapshot (Q1 2022 per paper)
+MTM_END_DATE=2023-03-31     # MTM loss measurement end (Q1 2023 per paper)
 ```
-Use `del` instead of rm on Windows
 
+Override `DATA_DIR` or `OUTPUT_DIR` to store data/output in a custom location.
 
-#### Setting Environment Variables
+---
 
-You can [export your environment variables](https://stackoverflow.com/questions/43267413/how-to-set-environment-variables-from-env-file)
-from your `.env` files like so, if you wish. This can be done easily in a Linux or Mac terminal with the following command:
+## Running Tests
+
 ```bash
-set -a  # automatically export all variables
-source .env
-set +a
-```
-On Windows (PowerShell):
-```powershell
-Get-Content .env | ForEach-Object { if ($_ -match '^([^=]+)=(.*)$') { [Environment]::SetEnvironmentVariable($matches[1], $matches[2], 'Process') } }
+pytest
 ```
 
-### Formatting
+Tests in `src/test_calc_mtm_losses.py` and `src/test_clean_data.py` use synthetic inputs to verify the MTM calculation logic and data cleaning functions. Two integration tests (skipped if data is not cached) verify that aggregate results fall within the expected range relative to the paper.
 
-This project uses [Ruff](https://docs.astral.sh/ruff/) for linting and formatting Python code.
+---
+
+## Formatting
 
 ```bash
-# Auto-fix linting issues (e.g., unused imports, undefined names)
-ruff check . --fix
-
-# Format code (consistent style, spacing, line length)
-ruff format .
-
-# Sort imports, then fix linting issues, then format
-ruff format . && ruff check --select I --fix . && ruff check --fix .
+ruff format .               # format code
+ruff check . --fix          # fix linting issues
 ```
 
-- `ruff check --fix` applies safe auto-fixes for linting violations
-- `ruff format` formats code similar to Black
-- `--select I` targets only import sorting rules (isort-compatible)
+---
 
-### General Directory Structure
+## Naming Conventions
 
- - The `assets` folder is used for things like hand-drawn figures or other
-   pictures that were not generated from code. These things cannot be easily
-   recreated if they are deleted.
+- **`pull_*.py`** — fetches from external source; saves parquet to `_data/`; includes matching `load_*()` functions
+- **`clean_data.py`** — transforms raw WRDS data into tidy per-bank DataFrames
+- **`calc_*.py`** — pure computation functions (no I/O)
+- **`create_*.py`** — generates output artifacts (LaTeX tables, PDF/PNG figures)
+- **`test_*.py`** — pytest unit tests
 
- - The `_output` folder, on the other hand, contains dataframes and figures that are
-   generated from code. The entire folder should be able to be deleted, because
-   the code can be run again, which would again generate all of the contents.
+## Directory Notes
 
- - The `data_manual` is for data that cannot be easily recreated. This data
-   should be version controlled. Anything in the `_data` folder or in
-   the `_output` folder should be able to be recreated by running the code
-   and can safely be deleted.
-
- - I'm using the `doit` Python module as a task runner. It works like `make` and
-   the associated `Makefile`s. To rerun the code, install `doit`
-   (https://pydoit.org/) and execute the command `doit` from the `src`
-   directory. Note that doit is very flexible and can be used to run code
-   commands from the command prompt, thus making it suitable for projects that
-   use scripts written in multiple different programming languages.
-
- - I'm using the `.env` file as a container for absolute paths that are private
-   to each collaborator in the project. You can also use it for private
-   credentials, if needed. It should not be tracked in Git.
-
-### Data and Output Storage
-
-I'll often use a separate folder for storing data. Any data in the data folder
-can be deleted and recreated by rerunning the PyDoit command (the pulls are in
-the dodo.py file). Any data that cannot be automatically recreated should be
-stored in the "data_manual" folder. Because of the risk of manually-created data
-getting changed or lost, I prefer to keep it under version control if I can.
-Thus, data in the "_data" folder is excluded from Git (see the .gitignore file),
-while the "data_manual" folder is tracked by Git.
-
-Output is stored in the "_output" directory. This includes dataframes, charts, and
-rendered notebooks. When the output is small enough, I'll keep this under
-version control. I like this because I can keep track of how dataframes change as my
-analysis progresses, for example.
-
-Of course, the _data directory and _output directory can be kept elsewhere on the
-machine. To make this easy, I always include the ability to customize these
-locations by defining the path to these directories in environment variables,
-which I intend to be defined in the `.env` file, though they can also simply be
-defined on the command line or elsewhere. The `settings.py` is responsible for
-loading these environment variables and doing some preprocessing on them.
-The `settings.py` file is the entry point for all other scripts to these
-definitions. That is, all code that references these variables and others are
-loaded by importing `config`.
-
-### Naming Conventions
-
- - **`pull_` vs `load_`**: Files or functions that pull data from an external
- data source are prepended with "pull_", as in "pull_fred.py". Functions that
- load data that has been cached in the "_data" folder are prepended with "load_".
- For example, inside of the `pull_CRSP_Compustat.py` file there is both a
- `pull_compustat` function and a `load_compustat` function. The first pulls from
- the web, whereas the other loads cached data from the "_data" directory.
-
-
-### Dependencies and Virtual Environments
-
-#### Working with `conda` environments
-
-This project uses conda for environment management. The dependencies are stored in `environment.yml`.
-
-To create/update the environment:
-```bash
-conda env create -f environment.yml
-# or to update an existing environment:
-conda env update -f environment.yml
-```
-
-To activate the environment:
-```bash
-conda activate p08_jiang_et_al_2024
-```
-
-To export the current environment:
-```bash
-conda env export > environment.yml
-```
-
-**Tip:** Consider using `mamba` instead of `conda` for faster package resolution. Install via [miniforge](https://github.com/conda-forge/miniforge).
-
+- `_data/` and `_output/` are **gitignored** — they are fully reproducible by running `doit`
+- `data_manual/` is **version controlled** — for any data that cannot be automatically re-downloaded
+- `.env` must **never** be committed — use `.env.example` as the template

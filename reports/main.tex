@@ -1,0 +1,198 @@
+\documentclass[12pt]{article}
+
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage[margin=1in]{geometry}
+\usepackage{natbib}
+
+\usepackage{my_article_header}
+
+\title{Monetary Tightening and U.S.\ Bank Fragility in 2023:\\
+       Replication of Jiang et al.\ (2024)}
+\author{Summer Han \and Joe Wang\\[4pt]
+        \small FINM 32900 --- Final Project}
+\date{March 2025}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+We replicate the core empirical findings of \citet{jiang2024monetary},
+which quantifies mark-to-market (MTM) losses on U.S.\ commercial bank
+asset portfolios resulting from the 2022--2023 Federal Reserve tightening
+cycle.  Using Q1~2022 WRDS Call Report balance sheet data and iShares ETF
+price changes from Q1~2022 to Q1~2023, we compute asset-level MTM losses
+for all U.S.\ commercial banks classified by size: Small ($\leq\$1.384$B),
+Large non-GSIB, and Global Systemically Important Banks (GSIBs).
+Our replication reproduces Table~1 and the supporting balance sheet
+composition statistics in Table~A1 and Figure~A1.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+%=============================================================================
+\section{Introduction}
+%=============================================================================
+
+The 2022--2023 Federal Reserve rate hiking cycle---the most aggressive in
+four decades---caused substantial mark-to-market losses on U.S.\ bank fixed
+income portfolios.  \citet{jiang2024monetary} estimate that aggregate
+unrealized losses on the banking system's assets reached approximately
+\$2.2~trillion by Q1~2023, raising questions about systemic fragility,
+uninsured deposit exposure, and the risk of depositor runs analogous to
+Silicon Valley Bank's collapse in March 2023.
+
+This replication report reconstructs the paper's main empirical exercise
+using publicly available data from WRDS (FFIEC Call Reports) and iShares
+ETF prices sourced via Yahoo Finance.  Section~\ref{sec:data} describes the
+data sources.  Section~\ref{sec:method} explains the MTM loss methodology.
+Section~\ref{sec:results} presents our replicated tables and figure.
+
+%=============================================================================
+\section{Data}\label{sec:data}
+%=============================================================================
+
+\subsection{Call Report Balance Sheet Data}
+
+Bank-level balance sheet data come from the FFIEC Call Reports accessed
+through WRDS.  We use the Q1~2022 quarterly snapshot (report date
+2022-03-31) from four WRDS tables:
+\texttt{bank.wrds\_call\_rcon\_1}, \texttt{bank.wrds\_call\_rcon\_2},
+\texttt{bank.wrds\_call\_rcfd\_1}, and \texttt{bank.wrds\_call\_rcfd\_2}.
+RCON codes cover domestic offices only; RCFD codes cover consolidated
+domestic and foreign offices.  For banks with foreign offices, we use RCFD
+values (which are weakly larger).
+
+The balance sheet items extracted by maturity bucket (less than 3 months,
+3m--1y, 1y--3y, 3y--5y, 5y--15y, greater than 15 years) include:
+\begin{itemize}
+  \item Residential mortgage-backed securities (RMBS), codes
+        \texttt{rcfd/rcona555--560}
+  \item Treasury and non-RMBS securities, codes \texttt{rcfd/rcona549--554}
+  \item First-lien residential mortgage loans, codes
+        \texttt{rcfd/rcona564--569}
+  \item Other loans and leases, codes \texttt{rcfd/rcona570--575}
+\end{itemize}
+Total assets (\texttt{rcfd/rcon2170}), uninsured deposits
+(\texttt{rcon5597}), and insured deposits (\texttt{rconf049} +
+\texttt{rconf045}) are also extracted.
+
+\subsection{ETF Price Data}
+
+Interest rate sensitivity for each maturity bucket is proxied by iShares
+U.S.\ Treasury ETF price changes over the period Q1~2022 to Q1~2023:
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Maturity Bucket & ETF Ticker & Description \\
+\midrule
+$<$3m, 3m--1y & SHV & iShares Short Treasury Bond \\
+1y--3y         & SHY & iShares 1--3 Year Treasury Bond \\
+3y--5y         & IEI & iShares 3--7 Year Treasury Bond \\
+5y--15y        & IEF & iShares 7--10 Year Treasury Bond \\
+$>$15y         & TLT & iShares 20+ Year Treasury Bond \\
+MBS multiplier & MBB & iShares MBS ETF \\
+Treasury index & GOVT & iShares U.S.\ Treasury Bond \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+ETF prices are downloaded via \texttt{yfinance} and resampled to quarterly
+frequency.
+
+%=============================================================================
+\section{Methodology}\label{sec:method}
+%=============================================================================
+
+\subsection{Bank Size Classification}
+
+Banks are classified into three groups following \citet{jiang2024monetary}:
+\begin{itemize}
+  \item \textbf{GSIB}: 17 Global Systemically Important Banks identified by
+        RSSD ID.
+  \item \textbf{Large non-GSIB}: Total assets $>$ \$1.384 billion (threshold
+        from the paper).
+  \item \textbf{Small}: Total assets $\leq$ \$1.384 billion.
+\end{itemize}
+
+\subsection{Mark-to-Market Loss Calculation}
+
+For each bank $i$ and maturity bucket $b$, the MTM loss is:
+\begin{equation}
+  \text{Loss}_{i,b} = H_{i,b} \times \Delta P_b
+\end{equation}
+where $H_{i,b}$ is the book value of holdings in bucket $b$ and $\Delta P_b$
+is the proportional price change of the matching ETF from Q1~2022 to
+Q1~2023.
+
+\paragraph{RMBS multiplier.}
+RMBS and first-lien mortgage holdings are more sensitive to mortgage rate
+movements than to the general Treasury yield curve.  Following
+\citet{jiang2024monetary}, we scale the Treasury price changes by an
+RMBS multiplier:
+\begin{equation}
+  m = \frac{\Delta P_{\text{MBS}}}{\Delta P_{\text{Treasury Index}}}
+    = \frac{P^{\text{MBB}}_{\text{end}}/P^{\text{MBB}}_{\text{start}} - 1}%
+           {P^{\text{GOVT}}_{\text{end}}/P^{\text{GOVT}}_{\text{start}} - 1}
+\end{equation}
+RMBS losses in bucket $b$ are then $H_{i,b}^{\text{RMBS}} \times m \times
+\Delta P_b$, and first-lien mortgage losses are computed identically.
+Treasury/other securities and other loans use $\Delta P_b$ directly (no
+multiplier).
+
+\subsection{Uninsured Deposit Metrics}
+
+Two solvency metrics are computed per bank:
+\begin{enumerate}
+  \item \textbf{Uninsured deposit ratio}: uninsured deposits as a fraction
+        of total assets.
+  \item \textbf{Insured deposit coverage}: insured deposits divided by
+        mark-to-market asset value (total assets minus aggregate MTM loss).
+\end{enumerate}
+
+%=============================================================================
+\section{Results}\label{sec:results}
+%=============================================================================
+
+Table~\ref{tab:table1} replicates Table~1 of \citet{jiang2024monetary},
+reporting aggregate MTM losses and uninsured deposit ratios by bank size
+group.  Table~\ref{tab:table_a1} replicates Appendix Table~A1, showing the
+balance sheet composition of U.S.\ commercial banks as of Q1~2022.
+Figure~\ref{fig:figure_a1} replicates Figure~A1, plotting the distribution
+of asset categories across the bank size spectrum.
+
+\input{../_output/table1.tex}
+
+\input{../_output/table_a1.tex}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{../_output/figure_a1.pdf}
+  \caption{Balance sheet composition of U.S.\ commercial banks by size as of
+           Q1~2022.  Each bar shows the fraction of total assets in each
+           category.  Replicates Figure~A1 of \citet{jiang2024monetary}.}
+  \label{fig:figure_a1}
+\end{figure}
+
+%=============================================================================
+\section{Conclusion}
+%=============================================================================
+
+Our replication confirms the main findings of \citet{jiang2024monetary}:
+the 2022--2023 rate hiking cycle inflicted large unrealized losses on U.S.\
+bank asset portfolios, with the aggregate MTM loss equaling a substantial
+fraction of the banking system's total equity.  Uninsured depositors,
+particularly at mid-size banks, faced meaningful insolvency risk if MTM
+losses were recognized.  These results highlight the role of interest rate
+risk in bank fragility and the importance of accounting for unrealized losses
+in supervisory stress tests.
+
+%=============================================================================
+\bibliographystyle{jpe}
+\bibliography{bibliography}
+
+\end{document}

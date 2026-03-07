@@ -52,3 +52,6 @@ jaydebeapi
 # Bloomberg data access
 xbbg>=0.7.7
 
+# ETF price data
+yfinance>=0.2.0
+

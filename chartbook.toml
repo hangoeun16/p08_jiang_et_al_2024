@@ -10,43 +10,87 @@ logo_path = ""
 favicon_path = ""
 
 [pipeline]
-id = "P0"
+id = "P08"
 pipeline_name = "Monetary Tightening and US Bank Fragility"
-pipeline_description = "Replicates Table 1, Table A1, and Figure A1 from Jiang et al. (2024) using data from WRDS, then updates the analysis through 2025 by scraping real-time data from FFIEC to monitor current mark-to-market losses and uninsured deposit exposure in US banks."
+pipeline_description = "Replicates Table 1, Table A1, and Figure A1 from Jiang et al. (2024) using Q1 2022 WRDS Call Report balance sheet data and iShares ETF price changes (Q1 2022 → Q1 2023) to compute mark-to-market losses for all U.S. commercial banks, classified by size: Small, Large non-GSIB, and GSIB."
 lead_pipeline_developer = "Summer Han, Joe Wang"
-contributors = ["Summer Han, Joe Wang"]
+contributors = ["Summer Han", "Joe Wang"]
 software_modules_command = "module load anaconda3/3.11.4 TeXLive/2023"
 runs_on_grid_or_windows_or_other = "Windows/Linux/MacOS"
 git_repo_URL = ""
 README_file_path = "./README.md"
 
 
-
 [dataframes]
 
+[dataframes.RCON_Series_1]
+dataframe_name = "Call Report RCON Series 1"
+short_description_df = "Domestic-office Call Report data: RMBS, first-lien mortgage loans, insured/uninsured deposits (Q4 2021 – Q3 2023)"
+data_sources = ["WRDS", "FFIEC"]
+data_providers = ["WRDS"]
+topic_tags = ["Banks", "Call Reports", "RCON"]
+how_is_pulled = "WRDS Python package via wrds.Connection()"
+path_to_parquet_data = "./_data/RCON_Series_1.parquet"
+date_col = "rssd9999"
+
+[dataframes.RCON_Series_2]
+dataframe_name = "Call Report RCON Series 2"
+short_description_df = "Domestic-office Call Report data: Treasury/other securities, other loans, total assets (Q4 2021 – Q3 2023)"
+data_sources = ["WRDS", "FFIEC"]
+data_providers = ["WRDS"]
+topic_tags = ["Banks", "Call Reports", "RCON"]
+how_is_pulled = "WRDS Python package via wrds.Connection()"
+path_to_parquet_data = "./_data/RCON_Series_2.parquet"
+date_col = "rssd9999"
 
 [dataframes.RCFD_Series_1]
-dataframe_name = "FFEIC Call Report Data"
-short_description_df = "Call Report Data from FFEIC on WRDS from 2021-12-31 to 2023-12-31"
+dataframe_name = "Call Report RCFD Series 1"
+short_description_df = "Consolidated (domestic+foreign) Call Report data: RMBS, first-lien mortgage loans (Q4 2021 – Q3 2023)"
 data_sources = ["WRDS", "FFIEC"]
-data_providers = ["WRDS", "FFIEC"]
-topic_tags = ["Banks", "Call Reports"]
-how_is_pulled = "WRDS Web API via Python"
+data_providers = ["WRDS"]
+topic_tags = ["Banks", "Call Reports", "RCFD"]
+how_is_pulled = "WRDS Python package via wrds.Connection()"
 path_to_parquet_data = "./_data/RCFD_Series_1.parquet"
 date_col = "rssd9999"
-dataframe_docs_path = "./docs_src/dataframes/RCFD_Series_1.md"
+
+[dataframes.RCFD_Series_2]
+dataframe_name = "Call Report RCFD Series 2"
+short_description_df = "Consolidated (domestic+foreign) Call Report data: Treasury/other securities, total assets (Q4 2021 – Q3 2023)"
+data_sources = ["WRDS", "FFIEC"]
+data_providers = ["WRDS"]
+topic_tags = ["Banks", "Call Reports", "RCFD"]
+how_is_pulled = "WRDS Python package via wrds.Connection()"
+path_to_parquet_data = "./_data/RCFD_Series_2.parquet"
+date_col = "rssd9999"
+
+[dataframes.etf_prices]
+dataframe_name = "iShares ETF Prices"
+short_description_df = "Daily closing prices for SHV, SHY, IEI, IEF, TLH, TLT, MBB, GOVT from 2021-12-31 to 2023-09-30"
+data_sources = ["Yahoo Finance"]
+data_providers = ["yfinance"]
+topic_tags = ["ETF", "Interest Rates", "MBS"]
+how_is_pulled = "yfinance Python package"
+path_to_parquet_data = "./_data/etf_prices.parquet"
+date_col = "date"
+
+[dataframes.bank_losses]
+dataframe_name = "Bank MTM Losses"
+short_description_df = "Per-bank mark-to-market losses by asset category, computed from Q1 2022 Call Report data and Q1 2022→Q1 2023 ETF price changes"
+data_sources = ["WRDS", "Yahoo Finance"]
+data_providers = ["WRDS", "yfinance"]
+topic_tags = ["Banks", "MTM Losses", "Interest Rate Risk"]
+how_is_pulled = "Computed by run_analysis.py"
+path_to_parquet_data = "./_data/bank_losses.parquet"
+date_col = ""
 
 
 [charts]
 
-
-[charts.total_cash]
-chart_name = "Total Cash by Banks"
-short_description_chart = "Total Cash by Banks from 2021-12-31 to 2023-12-31"
-dataframe_id = "RCFD_Series_1"
-topic_tags = ["Banks", "Call Reports"]
-data_series_start_date = "1/31/2012"
-units = "dollars"
-path_to_html_chart = "./_output/example_plot.html"
-chart_docs_path = "./docs_src/charts/total_cash.md"
-
+[charts.figure_a1]
+chart_name = "Balance Sheet Composition by Bank Size"
+short_description_chart = "Distribution of asset categories (RMBS, Treasuries, loans, other) across Small, Large non-GSIB, and GSIB bank groups as of Q1 2022. Replicates Figure A1 of Jiang et al. (2024)."
+dataframe_id = "bank_losses"
+topic_tags = ["Banks", "Balance Sheet", "MTM Losses"]
+data_series_start_date = "2022-03-31"
+units = "fraction of total assets"
+path_to_html_chart = ""

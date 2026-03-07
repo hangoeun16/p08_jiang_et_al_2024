@@ -148,8 +148,13 @@ else:
     defaults["STATA_EXE"] = get_stata_exe()
 
 ## Dates
-defaults["START_DATE"] = datetime.strptime("1913-01-01", "%Y-%m-%d")
-defaults["END_DATE"] = datetime.strptime("2024-12-31", "%Y-%m-%d")
+# REPORT_DATE: balance sheet snapshot date (Q1 2022 per Jiang et al. 2024)
+# START_DATE/END_DATE: range for WRDS pull (wide enough to include REPORT_DATE)
+# MTM_END_DATE: end of MTM loss measurement window (Q1 2023 per paper)
+defaults["REPORT_DATE"] = "2022-03-31"
+defaults["MTM_END_DATE"] = "2023-03-31"
+defaults["START_DATE"] = datetime.strptime("2021-12-31", "%Y-%m-%d")
+defaults["END_DATE"] = datetime.strptime("2023-09-30", "%Y-%m-%d")
 
 
 ## File paths
