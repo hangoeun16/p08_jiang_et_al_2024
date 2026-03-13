@@ -59,6 +59,7 @@ p08_jiang_et_al_2024/
 │   ├── settings.py              # Configuration (DATA_DIR, WRDS_USERNAME, dates)
 │   │
 │   ├── pull_wrds.py             # Pull WRDS Call Report data (4 series)
+│   ├── pull_ffiec.py            # Pull FFIEC Call Report data (4 series)
 │   ├── pull_etf_data.py         # Pull iShares ETF prices via yfinance
 │   │
 │   ├── clean_data.py            # Extract tidy per-bank balance sheet items
@@ -118,6 +119,8 @@ All settings are managed via `src/settings.py` and a `.env` file in the project 
 WRDS_USERNAME=your_wrds_username
 START_DATE=2021-12-31       # WRDS pull range start
 END_DATE=2023-09-30         # WRDS pull range end
+FFIEC_START_DATE=2023-12-31       # FFIEC pull range start
+FFIEC_END_DATE=2025-12-31         # FFIEC pull range end
 REPORT_DATE=2022-03-31      # Balance sheet snapshot (Q1 2022 per paper)
 MTM_END_DATE=2023-03-31     # MTM loss measurement end (Q1 2023 per paper)
 ```
