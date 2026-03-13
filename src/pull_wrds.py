@@ -204,6 +204,33 @@ def load_rcfd_series_2(data_dir=DATA_DIR):
     """Load cached RCFD series 2 from _data/RCFD_Series_2.parquet."""
     return pd.read_parquet(Path(data_dir) / "RCFD_Series_2.parquet")
 
+# ---------------------------------------------------------------------------
+# Helper: deduplicate and keep the recent record feeling
+# ---------------------------------------------------------------------------
+
+def _dedupe_bank_quarter(df: pd.DataFrame, name: str = "") -> pd.DataFrame:
+    """Deduplicate WRDS Call Report rows to one record per bank-quarter.
+
+    WRDS can contain multiple filings/amendments for the same (rssd9001, rssd9999).
+    We keep the last row within each bank-quarter, which is a reasonable proxy
+    for keeping the most recent amended filing.
+    """
+    key = ["rssd9001", "rssd9999"]
+
+    exact_dups = int(df.duplicated().sum())
+    key_dups = int(df.duplicated(subset=key).sum())
+
+    if exact_dups:
+        print(f"{name}: dropping {exact_dups} exact duplicate rows")
+        df = df.drop_duplicates()
+
+    if key_dups:
+        print(f"{name}: dropping {key_dups} duplicate bank-quarter rows (keeping last)")
+        df = df.sort_values(key).drop_duplicates(subset=key, keep="last")
+
+    return df
+
+
 
 if __name__ == "__main__":
     for name, pull_fn in [
@@ -213,9 +240,10 @@ if __name__ == "__main__":
         ("RCFD_Series_2",pull_rcfd_series_2)
     ]:
         df = pull_fn(wrds_username=WRDS_USERNAME)
-        pre_deduplication = len(df)
-        df = df.drop_duplicates()
-        duplicates = pre_deduplication - len(df)
+        before = len(df)
+        df = _dedupe_bank_quarter(df, name=name)
+        after= len(df)
+        duplicates = before - after
 
         if duplicates:
             print(f"{name} deduplication: dropped {duplicates} rows")
