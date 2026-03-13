@@ -150,12 +150,17 @@ else:
 ## Dates
 # REPORT_DATE: balance sheet snapshot date (Q1 2022 per Jiang et al. 2024)
 # START_DATE/END_DATE: range for WRDS pull (wide enough to include REPORT_DATE)
+# FFIEC_START_DATE/END_DATE: range for FFIEC pull (wide enough to include REPORT_DATE)
 # MTM_END_DATE: end of MTM loss measurement window (Q1 2023 per paper)
 defaults["REPORT_DATE"] = "2022-03-31"
 defaults["MTM_END_DATE"] = "2023-03-31"
 defaults["START_DATE"] = datetime.strptime("2021-12-31", "%Y-%m-%d")
 defaults["END_DATE"] = datetime.strptime("2023-09-30", "%Y-%m-%d")
-
+defaults["FFIEC_START_DATE"] = datetime.strptime("2023-12-31", "%Y-%m-%d")
+defaults["FFIEC_END_DATE"] = datetime.strptime("2025-12-31", "%Y-%m-%d")
+defaults["FFIEC_START_YEAR"] = 2023
+defaults["FFIEC_END_YEAR"] = 2025
+defaults["FFIEC_DOWNLOAD_TIMEOUT"]= 120
 
 ## File paths
 def if_relative_make_abs(path):
@@ -184,6 +189,7 @@ defaults = {
     "DATA_DIR": if_relative_make_abs(Path("_data")),
     "MANUAL_DATA_DIR": if_relative_make_abs(Path("data_manual")),
     "OUTPUT_DIR": if_relative_make_abs(Path("_output")),
+    "FFIEC_RAW_DIR": if_relative_make_abs(Path("_data/ffiec_data")),
     **defaults,
 }
 
