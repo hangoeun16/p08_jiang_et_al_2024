@@ -206,18 +206,18 @@ def load_rcfd_series_2(data_dir=DATA_DIR):
 
 
 if __name__ == "__main__":
-    rcon1 = pull_rcon_series_1(wrds_username=WRDS_USERNAME)
-    rcon1.to_parquet(DATA_DIR / "RCON_Series_1.parquet")
-    print(f"RCON_Series_1: {len(rcon1):,} rows")
+    for name, pull_fn in [
+        ("RCON_Series_1", pull_rcon_series_1),
+        ("RCON_Series_2", pull_rcon_series_2),
+        ("RCFD_Series_1",pull_rcfd_series_1),
+        ("RCFD_Series_2",pull_rcfd_series_2)
+    ]:
+        df = pull_fn(wrds_username=WRDS_USERNAME)
+        pre_deduplication = len(df)
+        df = df.drop_duplicates()
+        duplicates = pre_deduplication - len(df)
 
-    rcon2 = pull_rcon_series_2(wrds_username=WRDS_USERNAME)
-    rcon2.to_parquet(DATA_DIR / "RCON_Series_2.parquet")
-    print(f"RCON_Series_2: {len(rcon2):,} rows")
-
-    rcfd1 = pull_rcfd_series_1(wrds_username=WRDS_USERNAME)
-    rcfd1.to_parquet(DATA_DIR / "RCFD_Series_1.parquet")
-    print(f"RCFD_Series_1: {len(rcfd1):,} rows")
-
-    rcfd2 = pull_rcfd_series_2(wrds_username=WRDS_USERNAME)
-    rcfd2.to_parquet(DATA_DIR / "RCFD_Series_2.parquet")
-    print(f"RCFD_Series_2: {len(rcfd2):,} rows")
+        if duplicates:
+            print(f"{name} deduplication: dropped {duplicates} rows")
+        df.to_parquet(DATA_DIR / f"{name}.parquet")
+        print(f"{name}: {len(df):,} rows saved")
