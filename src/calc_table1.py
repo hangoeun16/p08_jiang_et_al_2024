@@ -1,12 +1,18 @@
 """Compute Table 1 statistics: MTM loss summary by bank size category.
 
-Aggregates per-bank MTM loss results from calc_mtm_losses.py into the
+This module takes already-computed per-bank loss inputs and 
+aggregates per-bank MTM loss results from calc_mtm_losses.py into the
 summary statistics shown in Table 1 of Jiang et al. (2024):
-  - Aggregate Loss (sum, in trillions)
-  - Bank-Level Loss (median, in millions)
-  - Median Loss/Asset (%)
-  - Median Uninsured Deposits/MTM Assets (%)
-  - Number of Banks
+- Aggregate Loss
+- Bank Level Loss
+- Bank Level Loss Std
+- Share RMBS
+- Share Treasury and Other
+- Share Residential Mortgage
+- Share Other Loan
+- Loss/Asset
+- Uninsured Deposit/MM Asset
+- Number of Banks
 
 Statistics are reported for four groups:
   All Banks, Small, Large non-GSIB, GSIB
@@ -19,6 +25,44 @@ Usage
 
 import numpy as np
 import pandas as pd
+
+# ---------------------------------------------------------------------------
+# Data prep helpers
+# ---------------------------------------------------------------------------
+
+def _prepare_bank_losses(bank_losses: pd.DataFrame) -> pd.DataFrame:
+    df = bank_losses.copy()
+
+    # Absolute MTM loss magnitudes for bank-level summary rows
+    df["_abs_total_loss"] = df["total_loss"].abs()
+
+    # Asset-class loss shares used in notebook table_1
+    loss_rmbs = df["rmbs_loss"].abs()
+    loss_treasury = df["treasury_loss"].abs()
+    loss_loans = df["loans_loss"].abs()
+    loss_other = df["other_loans_loss"].abs()
+
+    total_component_loss = loss_rmbs + loss_treasury + loss_loans + loss_other
+
+    df["Share RMBS (%)"] = 100 * loss_rmbs / total_component_loss
+    df["Share Treasury and Other (%)"] = 100 * loss_treasury / total_component_loss
+    df["Share Residential Mortgage (%)"] = 100 * loss_loans / total_component_loss
+    df["Share Other Loan (%)"] = 100 * loss_other / total_component_loss
+
+    # Loss/Asset row in percent
+    df["Loss/Asset (%)"] = df["loss_over_assets"].abs() * 100
+
+    return df
+
+
+def _insured_ratio_series(insured_coverage: pd.DataFrame, bank_ids: set[int]) -> pd.Series:
+    sub = insured_coverage[insured_coverage["bank_id"].isin(bank_ids)].copy()
+    return (sub["insured_deposits"].astype(float) / sub["mtm_assets"].astype(float)) * 100
+
+def _uninsured_ratio_series(uninsured_ratio: pd.DataFrame, bank_ids: set[int]) -> pd.Series:
+    sub = uninsured_ratio[uninsured_ratio["bank_id"].isin(bank_ids)].copy()
+    return sub["uninsured_over_mtm_assets"].astype(float) * 100
+    
 
 
 def _group_stats(bank_losses, uninsured_ratio, insured_coverage, mask=None, label="All Banks"):
@@ -43,60 +87,93 @@ def _group_stats(bank_losses, uninsured_ratio, insured_coverage, mask=None, labe
     pd.Series
     """
     if mask is None:
-        mask = pd.Series([True] * len(bank_losses), index=bank_losses.index)
+        mask = pd.Series(True, index=bank_losses.index)
+    else:
+        mask = mask.reindex(bank_losses.index, fill_value=False)
 
-    bl = bank_losses[mask]
-    bid_set = set(bl["bank_id"])
+    if mask is None:
+        mask = pd.Series(True, index=bank_losses.index)
 
-    ur = uninsured_ratio[uninsured_ratio["bank_id"].isin(bid_set)]
-    ic = insured_coverage[insured_coverage["bank_id"].isin(bid_set)]
+    bl = bank_losses.loc[mask].copy()
+    bank_ids = set(bl["bank_id"])
 
-    agg_loss_trillions = -bl["total_loss"].sum() / 1e9  # thousands → billions, then billions reported
+    ur = _uninsured_ratio_series(uninsured_ratio, bank_ids)
+    ic = _insured_ratio_series(insured_coverage, bank_ids)
 
     return pd.Series(
         {
-            "Aggregate Loss ($B)": round(-bl["total_loss"].sum() / 1e6, 1),
-            "Median Bank Loss ($M)": round(-bl["total_loss"].median() / 1e3, 1),
-            "Median Loss/Assets (%)": round(bl["loss_over_assets"].median() * 100, 1),
-            "Median Unins. Dep./MTM Assets (%)": round(
-                ur["uninsured_over_mtm_assets"].median() * 100, 1
+            "Aggregate Loss": round(bl["_abs_total_loss"].sum() / 1e6, 1),
+            "Bank Level Loss": round(bl["_abs_total_loss"].median() / 1e3, 1),
+            "Bank Level Loss Std": round(bl["_abs_total_loss"].std() / 1e6, 1),
+            "Share RMBS": round(bl["Share RMBS (%)"].median(), 1),
+            "Share RMBS Std": round(bl["Share RMBS (%)"].std(), 1),
+            "Share Treasury and Other": round(
+                bl["Share Treasury and Other (%)"].median(), 1
             ),
-            "Number of Banks": len(bl),
+            "Share Treasury and Other Std": round(
+                bl["Share Treasury and Other (%)"].std(), 1
+            ),
+            "Share Residential Mortgage": round(
+                bl["Share Residential Mortgage (%)"].median(), 1
+            ),
+            "Share Residential Mortgage Std": round(
+                bl["Share Residential Mortgage (%)"].std(), 1
+            ),
+            "Share Other Loan": round(bl["Share Other Loan (%)"].median(), 1),
+            "Share Other Loan Std": round(bl["Share Other Loan (%)"].std(), 1),
+            "Loss/Asset": round(bl["Loss/Asset (%)"].median(), 1),
+            "Loss/Asset Std": round(bl["Loss/Asset (%)"].std(), 1),
+            "Uninsured Deposit/MM Asset": round(ur.median(), 1),
+            "Uninsured Deposit/MM Asset Std": round(ur.std(), 1),
+            #"Insured Deposit/MM Asset": round(ic.median(), 1),
+            #"Insured Deposit/MM Asset Std": round(ic.std(), 1),
+            "Number of Banks": int(len(bl)),
         },
         name=label,
     )
 
 
-def calc_table1(bank_losses, uninsured_ratio, insured_coverage):
-    """Assemble Table 1 with statistics for all four bank size groups.
+def calc_table1(
+    bank_losses: pd.DataFrame,
+    uninsured_ratio: pd.DataFrame,
+    insured_coverage: pd.DataFrame,
+) -> pd.DataFrame:
+    """Assemble Table 1 for all bank groups.
 
     Parameters
     ----------
     bank_losses : pd.DataFrame
-        Per-bank losses from calc_mtm_losses.calc_bank_losses() with
-        'size_category' column added by classify_banks().
+        Per-bank MTM loss output with at least:
+        ``bank_id``, ``size_category``, ``total_loss``, ``rmbs_loss``,
+        ``treasury_loss``, ``loans_loss``, ``other_loans_loss``,
+        ``loss_over_assets``.
     uninsured_ratio : pd.DataFrame
-        From calc_mtm_losses.calc_uninsured_deposit_ratio().
+        Per-bank uninsured deposits / MTM assets ratio.
     insured_coverage : pd.DataFrame
-        From calc_mtm_losses.calc_insured_deposit_coverage().
+        Per-bank insured deposit coverage ratio.
 
     Returns
     -------
     pd.DataFrame
-        Table 1 with rows = statistics, columns = bank groups.
+        Notebook-style Table 1 with rows = statistics and columns = bank groups.
     """
+    bl = _prepare_bank_losses(bank_losses)
+
     groups = {
-        "All Banks": None,
-        "Small": bank_losses["size_category"] == "Small",
-        "Large non-GSIB": bank_losses["size_category"] == "Large non-GSIB",
-        "GSIB": bank_losses["size_category"] == "GSIB",
+        "All Banks": pd.Series(True, index=bl.index),
+        "Small": bl["size_category"] == "Small",
+        "Large non-GSIB": bl["size_category"] == "Large non-GSIB",
+        "GSIB": bl["size_category"] == "GSIB",
     }
 
     columns = {}
     for label, mask in groups.items():
         columns[label] = _group_stats(
-            bank_losses, uninsured_ratio, insured_coverage, mask=mask, label=label
+            bl,
+            uninsured_ratio,
+            insured_coverage,
+            mask=mask,
+            label=label,
         )
 
-    table1 = pd.DataFrame(columns)
-    return table1
+    return pd.DataFrame(columns)
