@@ -4,9 +4,23 @@ Replicates **Table 1**, **Table A1**, and **Figure A1** from:
 
 > Jiang, E., Matvos, G., Piskorski, T., & Seru, A. (2024). "Monetary Tightening and U.S. Bank Fragility in 2023: Mark-to-Market Losses and Uninsured Depositor Runs?" *Journal of Finance*.
 
-The pipeline uses Q1 2022 WRDS Call Report balance sheet data and iShares ETF price changes (Q1 2022 → Q1 2023) to compute mark-to-market (MTM) losses for all U.S. commercial banks, classified by size: Small, Large non-GSIB, and GSIB.
+The pipeline uses Q1 2022 WRDS Call Report balance sheet data and iShares ETF price changes (Q1 2022 → Q1 2023) to compute mark-to-market (MTM) losses for all U.S. commercial banks, classified by size: Small, Large non-GSIB, and GSIB. It also produces original analysis: an ETF price change summary table and a bank fragility scatter plot.
 
 **Team members:** Summer Han, Joe Wang (FINM32900 Final Project)
+
+---
+
+## Team Responsibilities
+
+| Task | Joe Wang | Summer Han |
+|------|----------|------------|
+| refactoring previous group's code | X |  |
+| write up tex file | X | |
+| create tex file pipeline | X | |
+| data tour and summary stats | X | |
+| | | |
+| | | |
+| | | |
 
 ---
 
@@ -46,7 +60,7 @@ doit
 | `doit pull:etf` | Pull iShares ETF prices via yfinance |
 | `doit pull:struct_rel` | Pull WRDS relation data |
 | `doit analysis` | Compute MTM losses, save results to `_data/` |
-| `doit outputs` | Generate LaTeX tables and Figure A1 in `_output/` |
+| `doit outputs` | Generate LaTeX tables, figures, and original analysis in `_output/` |
 | `doit convert_notebooks` | Convert `.py` percent notebooks → `.ipynb` via jupytext |
 | `doit run_notebooks` | Execute notebooks and export to HTML |
 | `doit compile_latex` | Build PDF report via latexmk |
@@ -75,11 +89,13 @@ p08_jiang_et_al_2024/
 │   ├── create_table1.py         # Generate Table 1 as LaTeX (.tex)
 │   ├── create_table_a1.py       # Generate Table A1 as LaTeX (.tex)
 │   ├── create_figure_a1.py      # Generate Figure A1 as PDF/PNG
+│   ├── create_etf_table.py      # Generate ETF price change summary table as LaTeX (.tex)
+│   ├── create_fragility_figure.py  # Generate bank fragility scatter plot as PDF/PNG
 │   │
 │   ├── 01_data_tour.py          # Notebook: data overview (percent format → .ipynb)
 │   ├── 02_replication.py        # Notebook: replication results + updated analysis
 │   │
-│   ├── test_calc_mtm_losses.py  # Unit tests for MTM calculation
+│   ├── test_calc_mtm_losses.py  # Unit tests for MTM calculation (21 tests)
 │   └── test_clean_data.py       # Unit tests for data cleaning
 │
 ├── reports/
@@ -138,7 +154,14 @@ Override `DATA_DIR` or `OUTPUT_DIR` to store data/output in a custom location.
 pytest
 ```
 
-Tests in `src/test_calc_mtm_losses.py` and `src/test_clean_data.py` use synthetic inputs to verify the MTM calculation logic and data cleaning functions. Two integration tests (skipped if data is not cached) verify that aggregate results fall within the expected range relative to the paper.
+Tests in `src/test_calc_mtm_losses.py` and `src/test_clean_data.py` use synthetic inputs to verify the MTM calculation logic and data cleaning functions. Four tolerance-based integration tests (skipped if data is not cached) verify that aggregate results match the paper's Table 1 values within stated tolerances:
+
+| Test | Paper value | Tolerance |
+|------|-------------|-----------|
+| Aggregate MTM loss | $2,200B | 40% |
+| Total bank count | 4,844 | 2% |
+| Median loss/assets | 9.2% | 25% |
+| Small bank share | ~84% | 75–95% range |
 
 ---
 
