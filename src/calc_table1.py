@@ -31,6 +31,26 @@ import pandas as pd
 # ---------------------------------------------------------------------------
 
 def _prepare_bank_losses(bank_losses: pd.DataFrame) -> pd.DataFrame:
+    """Add derived columns needed for Table 1 summary statistics.
+ 
+    Computes absolute total loss, per-bank loss-share percentages for each
+    asset class, and loss-over-assets in percent.
+ 
+    Parameters
+    ----------
+    bank_losses : pd.DataFrame
+        Output of calc_mtm_losses.calc_bank_losses(). Must contain
+        total_loss, rmbs_loss, treasury_loss, loans_loss, other_loans_loss,
+        and loss_over_assets columns.
+ 
+    Returns
+    -------
+    pd.DataFrame
+        Copy of input with added columns: _abs_total_loss,
+        Share RMBS (%), Share Treasury and Other (%),
+        Share Residential Mortgage (%), Share Other Loan (%),
+        Loss/Asset (%).
+    """
     df = bank_losses.copy()
 
     # Absolute MTM loss magnitudes for bank-level summary rows
@@ -55,15 +75,52 @@ def _prepare_bank_losses(bank_losses: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def _insured_ratio_series(insured_coverage: pd.DataFrame, bank_ids: set[int]) -> pd.Series:
+ 
+def _insured_ratio_series(
+    insured_coverage: pd.DataFrame,
+    bank_ids: set[int],
+) -> pd.Series:
+    """Compute insured deposits / MTM assets (%) for a subset of banks.
+ 
+    Parameters
+    ----------
+    insured_coverage : pd.DataFrame
+        Output of calc_mtm_losses.calc_insured_deposit_coverage().
+        Must contain bank_id, insured_deposits, mtm_assets.
+    bank_ids : set[int]
+        Bank IDs to include.
+ 
+    Returns
+    -------
+    pd.Series
+        Insured deposit ratio in percent.
+    """
     sub = insured_coverage[insured_coverage["bank_id"].isin(bank_ids)].copy()
     return (sub["insured_deposits"].astype(float) / sub["mtm_assets"].astype(float)) * 100
 
 def _uninsured_ratio_series(uninsured_ratio: pd.DataFrame, bank_ids: set[int]) -> pd.Series:
+    """Extract uninsured deposits / MTM assets (%) for a subset of banks.
+ 
+    Parameters
+    ----------
+    uninsured_ratio : pd.DataFrame
+        Output of calc_mtm_losses.calc_uninsured_deposit_ratio().
+        Must contain bank_id and uninsured_over_mtm_assets.
+    bank_ids : set[int]
+        Bank IDs to include.
+ 
+    Returns
+    -------
+    pd.Series
+        Uninsured deposit ratio in percent.
+    """
     sub = uninsured_ratio[uninsured_ratio["bank_id"].isin(bank_ids)].copy()
     return sub["uninsured_over_mtm_assets"].astype(float) * 100
+ 
     
-
+# ---------------------------------------------------------------------------
+# Per-group statistics
+# ---------------------------------------------------------------------------
 
 def _group_stats(bank_losses, uninsured_ratio, insured_coverage, mask=None, label="All Banks"):
     """Compute Table 1 summary statistics for a subset of banks.
@@ -91,14 +148,10 @@ def _group_stats(bank_losses, uninsured_ratio, insured_coverage, mask=None, labe
     else:
         mask = mask.reindex(bank_losses.index, fill_value=False)
 
-    if mask is None:
-        mask = pd.Series(True, index=bank_losses.index)
-
     bl = bank_losses.loc[mask].copy()
     bank_ids = set(bl["bank_id"])
 
     ur = _uninsured_ratio_series(uninsured_ratio, bank_ids)
-    ic = _insured_ratio_series(insured_coverage, bank_ids)
 
     return pd.Series(
         {
@@ -132,6 +185,9 @@ def _group_stats(bank_losses, uninsured_ratio, insured_coverage, mask=None, labe
         name=label,
     )
 
+# ---------------------------------------------------------------------------
+# Main entry point
+# ---------------------------------------------------------------------------
 
 def calc_table1(
     bank_losses: pd.DataFrame,
@@ -166,14 +222,8 @@ def calc_table1(
         "GSIB": bl["size_category"] == "GSIB",
     }
 
-    columns = {}
-    for label, mask in groups.items():
-        columns[label] = _group_stats(
-            bl,
-            uninsured_ratio,
-            insured_coverage,
-            mask=mask,
-            label=label,
-        )
-
+    columns = {
+        label: _group_stats(bl, uninsured_ratio, insured_coverage, mask=mask, label=label)
+        for label, mask in groups.items()
+    }
     return pd.DataFrame(columns)
