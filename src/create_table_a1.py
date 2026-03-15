@@ -24,75 +24,140 @@ def load_table_a1_panels(data_dir=DATA_DIR):
     return panel_a, panel_b
 
 def _fmt(v) -> str:
+    """Format a value as a string with one decimal place."""
     if pd.isna(v):
         return ""
     return f"{v:.1f}"
 
+
+def _fmt_dollars(v) -> str:
+    """Format a dollar value (in $thousands) with T/B/M suffix."""
+    if pd.isna(v):
+        return ""
+    v_abs = abs(v)
+    if v_abs >= 1_000_000_000:  # trillions
+        return f"{v / 1_000_000_000:.1f}T"
+    elif v_abs >= 1_000_000:  # billions
+        return f"{v / 1_000_000:.1f}B"
+    elif v_abs >= 1_000:  # millions
+        return f"{v / 1_000:.1f}M"
+    else:
+        return f"{v:.1f}K"
+
+
+def _fmt_int(v) -> str:
+    """Format a value as an integer (no decimals)."""
+    if pd.isna(v):
+        return ""
+    return f"{int(v):,}"
+
+
 def _format_panel_rows(df: pd.DataFrame) -> list[str]:
+    """Convert a panel DataFrame into LaTeX row strings."""
     lines = []
 
     for item, row in df.iterrows():
-        item_escaped = str(item).replace("&", r"\&").replace("$", r"\$").replace("%", r"\%")
+        item_str = str(item)
+        item_escaped = item_str.replace("&", r"\&").replace("$", r"\$").replace("%", r"\%")
+
+        # Pick formatter based on row label
+        if "Total Asset" in item_str:
+            fmt = _fmt_dollars
+        elif "Number of Banks" in item_str:
+            fmt = _fmt_int
+        else:
+            fmt = _fmt
 
         mean_vals = [
-            _fmt(row.get("Aggregate")),
-            _fmt(row.get("Full sample(mean)")),
-            _fmt(row.get("small(mean)")),
-            _fmt(row.get("large(mean)")),
-            _fmt(row.get("GSIB(mean)")),
+            fmt(row.get("Aggregate")),
+            fmt(row.get("Full sample(mean)")),
+            fmt(row.get("small(mean)")),
+            fmt(row.get("large(mean)")),
+            fmt(row.get("GSIB(mean)")),
         ]
 
         sd_vals = [
             "",
-            _fmt(row.get("Full sample(sd)")),
-            _fmt(row.get("small(sd)")),
-            _fmt(row.get("large(sd)")),
-            _fmt(row.get("GSIB(sd)")),
+            fmt(row.get("Full sample(sd)")),
+            fmt(row.get("small(sd)")),
+            fmt(row.get("large(sd)")),
+            fmt(row.get("GSIB(sd)")),
         ]
 
         lines.append(f"{item_escaped} & " + " & ".join(mean_vals) + r" \\")
-        lines.append(" & " + " & ".join(sd_vals) + r" \\")
+        # Skip the sd row for "Number of Banks" (all empty anyway)
+        if "Number of Banks" not in item_str:
+            lines.append(" & " + " & ".join(sd_vals) + r" \\")
     return lines
 
+def _table_header():
+    """Return the shared column header line."""
+    return r"Category & Aggregate & Full sample & Small & Large non-GSIB & GSIB \\"
+
+
+def _caption_text():
+    """Return the shared caption text fragment."""
+    return (
+        rf"Balance Sheet Composition of U.S.\ Commercial Banks as of {REPORT_DATE}. "
+        r"Entries are percentages of total assets. "
+        r"All numbers except for aggregate are based on sample averages "
+        r"after winsorizing at the 5th and 95th percentiles. "
+        r"Standard deviations are shown on the line below each mean. "
+        r"Small banks have total assets $\leq$ \$1.384B."
+    )
+
+
 def format_table_a1_latex(panel_a, panel_b):
-    cols = list(panel_a.columns)
+    """Generate LaTeX for Table A1 as two separate tables (Panel A and B)."""
     col_spec = "lrrrrr"
 
-    lines = [
+    # --- Panel A ---
+    lines_a = [
         r"\begin{table}[htbp]",
         r"\centering",
-        rf"\caption{{Balance Sheet Composition of U.S.\ Commercial Banks as of {REPORT_DATE}. "
-        r"Entries are percentages of total assets. "
-        r"All numbers except for aggregate are based on sample averages after winsorizing at the 5th and 95th percentiles. "
-        r"Standard deviations are shown on the line below each mean. "
-        r"Small banks have total assets $\leq$ \$1.384B.}",
+        rf"\caption{{{_caption_text()}}}",
         r"\label{tab:table_a1}",
-        r"\small",
+        r"\footnotesize",
+        rf"\resizebox{{\textwidth}}{{!}}{{",
         rf"\begin{{tabular}}{{{col_spec}}}",
         r"\toprule",
-        r"Category & Aggregate & Full sample & Small & Large non-GSIB & GSIB \\",
+        _table_header(),
         r"\midrule",
         r"\multicolumn{6}{c}{\textbf{Panel A: Bank Asset Composition, Q1 2022}} \\",
         r"\midrule",
     ]
+    lines_a += _format_panel_rows(panel_a)
+    lines_a += [
+        r"\bottomrule",
+        r"\end{tabular}",
+        r"}",  # close \resizebox
+        r"\end{table}",
+    ]
 
-
-    lines += _format_panel_rows(panel_a)
-
-    lines += [
+    # --- Panel B ---
+    lines_b = [
+        r"\begin{table}[htbp]",
+        r"\centering",
+        r"\caption{Balance Sheet Composition (continued).}",
+        r"\label{tab:table_a1_b}",
+        r"\footnotesize",
+        rf"\resizebox{{\textwidth}}{{!}}{{",
+        rf"\begin{{tabular}}{{{col_spec}}}",
+        r"\toprule",
+        _table_header(),
         r"\midrule",
         r"\multicolumn{6}{c}{\textbf{Panel B: Bank Liability Composition, Q1 2022}} \\",
         r"\midrule",
     ]
-
-    lines += _format_panel_rows(panel_b)
-
-    lines += [
+    lines_b += _format_panel_rows(panel_b)
+    lines_b += [
         r"\bottomrule",
         r"\end{tabular}",
+        r"}",  # close \resizebox
         r"\end{table}",
     ]
-    return "\n".join(lines)
+
+    return "\n".join(lines_a) + "\n\n\\clearpage\n\n" + "\n".join(lines_b)
 
 
 def create_table_a1(data_dir=DATA_DIR, output_dir=OUTPUT_DIR):
