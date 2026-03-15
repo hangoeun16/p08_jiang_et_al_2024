@@ -77,7 +77,7 @@ def task_pull():
     """Pull raw data from external sources."""
     yield {
         "name": "wrds",
-        "doc": "Pull WRDS Call Report data (RCON/RCFD series 1 and 2)",
+        "doc": "Pull WRDS Call Report data (RCON/RCFD/RCFN series 1 and 2)",
         "actions": [
             "ipython ./src/settings.py",
             "ipython ./src/pull_wrds.py",
@@ -87,6 +87,7 @@ def task_pull():
             DATA_DIR / "RCON_Series_2.parquet",
             DATA_DIR / "RCFD_Series_1.parquet",
             DATA_DIR / "RCFD_Series_2.parquet",
+            DATA_DIR / "RCFN_Series_1.parquet",
         ],
         "file_dep": ["./src/settings.py", "./src/pull_wrds.py"],
         "clean": [],
@@ -110,13 +111,14 @@ def task_analysis():
     return {
         "actions": ["ipython ./src/run_analysis.py"],
         "targets": [
-            DATA_DIR / "bank_losses.parquet",
-            DATA_DIR / "uninsured_ratio.parquet",
-            DATA_DIR / "insured_coverage.parquet",
-            DATA_DIR / "table1.parquet",
-            DATA_DIR / "table_a1.parquet",
-            DATA_DIR / "figure_a1_data.parquet",
-        ],
+        DATA_DIR / "bank_losses.parquet",
+        DATA_DIR / "uninsured_ratio.parquet",
+        DATA_DIR / "insured_coverage.parquet",
+        DATA_DIR / "table1.parquet",
+        DATA_DIR / "table_a1_panel_a.parquet",
+        DATA_DIR / "table_a1_panel_b.parquet",
+        DATA_DIR / "figure_a1_data.parquet",
+    ],
         "file_dep": [
             "./src/settings.py",
             "./src/run_analysis.py",
@@ -128,6 +130,7 @@ def task_analysis():
             DATA_DIR / "RCON_Series_2.parquet",
             DATA_DIR / "RCFD_Series_1.parquet",
             DATA_DIR / "RCFD_Series_2.parquet",
+            DATA_DIR / "RCFN_Series_1.parquet",
             DATA_DIR / "etf_prices.parquet",
         ],
         "clean": [],
@@ -154,9 +157,10 @@ def task_outputs():
         "actions": ["ipython ./src/create_table_a1.py"],
         "targets": [OUTPUT_DIR / "table_a1.tex"],
         "file_dep": [
-            "./src/create_table_a1.py",
-            DATA_DIR / "table_a1.parquet",
-        ],
+        "./src/create_table_a1.py",
+        DATA_DIR / "table_a1_panel_a.parquet",
+        DATA_DIR / "table_a1_panel_b.parquet",
+    ],
         "clean": True,
     }
 
