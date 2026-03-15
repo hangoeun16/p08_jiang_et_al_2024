@@ -27,8 +27,9 @@ from calc_mtm_losses import (
 
 def test_classify_banks_gsib():
     """GSIB bank IDs should be classified as 'GSIB' regardless of asset size."""
+    gsib_sample = sorted(GSIB_IDS)[:2]
     df = pd.DataFrame({
-        "bank_id": [GSIB_IDS[0], GSIB_IDS[1]],
+        "bank_id": gsib_sample,
         "bank_name": ["GSIB A", "GSIB B"],
         "total_assets": [5_000_000, 2_000_000],
     })
@@ -192,36 +193,75 @@ def test_bank_losses_rmbs_uses_multiplier():
 # ---------------------------------------------------------------------------
 
 
-def test_aggregate_loss_order_of_magnitude():
-    """Aggregate loss should be in the trillions range (~$2T for all banks)."""
+def _load_bank_losses():
+    """Load bank_losses.parquet or skip if not present."""
     from settings import config
     from pathlib import Path
-
-    data_dir = Path(config("DATA_DIR"))
-    parquet_path = data_dir / "bank_losses.parquet"
-
+    parquet_path = Path(config("DATA_DIR")) / "bank_losses.parquet"
     if not parquet_path.exists():
         pytest.skip("bank_losses.parquet not found — run run_analysis.py first")
+    return pd.read_parquet(parquet_path)
 
-    bank_losses = pd.read_parquet(parquet_path)
+
+def test_aggregate_loss_within_paper_tolerance():
+    """Aggregate MTM loss should be within 35% of paper's reported $2.2 trillion.
+
+    Paper (Jiang et al. 2024, Table 1): All Banks aggregate loss = $2,200B.
+    We allow 40% tolerance to account for data vintage, GSIB affiliate mapping
+    differences (our struct_rel expansion changes GSIB loss attribution), and
+    ETF proxy choices (IEI vs. S&P 3-5y index).
+    """
+    bank_losses = _load_bank_losses()
     agg_loss_billions = -bank_losses["total_loss"].sum() / 1e6  # $thousands → $billions
-    # Paper reports ~$2.2T aggregate loss
-    assert 1_000 < agg_loss_billions < 4_000, (
-        f"Aggregate loss ${agg_loss_billions:.0f}B outside expected range $1T-$4T"
+    paper_value = 2_200.0  # $billions (Table 1, Jiang et al. 2024)
+    tolerance = 0.40
+    rel_error = abs(agg_loss_billions - paper_value) / paper_value
+    assert rel_error <= tolerance, (
+        f"Aggregate loss ${agg_loss_billions:.0f}B deviates {rel_error:.1%} from "
+        f"paper's ${paper_value:.0f}B (tolerance: {tolerance:.0%})"
     )
 
 
-def test_bank_count_all():
-    """Total bank count should be approximately 4,844 (Table 1, paper)."""
-    from settings import config
-    from pathlib import Path
+def test_bank_count_within_paper_tolerance():
+    """Total bank count should be within 2% of paper's 4,844.
 
-    data_dir = Path(config("DATA_DIR"))
-    parquet_path = data_dir / "bank_losses.parquet"
-
-    if not parquet_path.exists():
-        pytest.skip("bank_losses.parquet not found — run run_analysis.py first")
-
-    bank_losses = pd.read_parquet(parquet_path)
+    Paper (Table 1): n = 4,844 banks total. Small differences reflect data
+    vintage (banks opened, closed, or merged between our pull and the paper's).
+    """
+    bank_losses = _load_bank_losses()
     count = len(bank_losses)
-    assert 4_000 < count < 6_000, f"Bank count {count} outside expected range 4000-6000"
+    paper_count = 4_844
+    tolerance = 0.02
+    rel_error = abs(count - paper_count) / paper_count
+    assert rel_error <= tolerance, (
+        f"Bank count {count} deviates {rel_error:.1%} from paper's {paper_count} "
+        f"(tolerance: {tolerance:.0%})"
+    )
+
+
+def test_median_loss_over_assets_within_paper_tolerance():
+    """Median loss/assets ratio should be within 25% of paper's 9.2%.
+
+    Paper (Table 1): median Loss/Assets = 9.2% for all banks.
+    """
+    bank_losses = _load_bank_losses()
+    median_pct = bank_losses["loss_over_assets"].abs().median() * 100
+    paper_value = 9.2  # percent (Table 1, Jiang et al. 2024)
+    tolerance = 0.25
+    rel_error = abs(median_pct - paper_value) / paper_value
+    assert rel_error <= tolerance, (
+        f"Median loss/assets {median_pct:.2f}% deviates {rel_error:.1%} from "
+        f"paper's {paper_value}% (tolerance: {tolerance:.0%})"
+    )
+
+
+def test_small_bank_share_of_total():
+    """Small banks should constitute roughly 80-90% of the sample.
+
+    Paper: 4,090 small banks out of 4,844 total ≈ 84%.
+    """
+    bank_losses = _load_bank_losses()
+    small_share = (bank_losses["size_category"] == "Small").mean()
+    assert 0.75 <= small_share <= 0.95, (
+        f"Small bank share {small_share:.1%} outside expected range 75%-95%"
+    )
