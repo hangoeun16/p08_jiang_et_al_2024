@@ -22,6 +22,219 @@ def _total_holdings(df):
     available = [b for b in BUCKET_COLS if b in df.columns]
     return df[available].fillna(0).sum(axis=1)
 
+def _winsorize_series(s: pd.Series, lower: float = 0.05, upper: float = 0.95) -> pd.Series:
+    """Winsorize a series at the given lower/upper quantiles."""
+    s = pd.to_numeric(s, errors="coerce")
+    s = s.replace([np.inf, -np.inf], np.nan).dropna()
+    if s.empty:
+        return s
+    lo = s.quantile(lower)
+    hi = s.quantile(upper)
+    return s.clip(lower=lo, upper=hi)
+
+def _format_mean_sd(s: pd.Series, scale: float = 1.0, decimals: int = 1) -> str:
+    """
+    Return formatted 'mean\\n(sd)' string after winsorization.
+    """
+    s = _winsorize_series(s)
+    if s.empty:
+        return ""
+    mean_val = s.mean() * scale
+    sd_val = s.std(ddof=1) * scale
+    return f"{mean_val:.{decimals}f}\n({sd_val:.{decimals}f})"
+
+from scipy.stats.mstats import winsorize
+
+GSIB_IDS_Q1_2022 = [
+    934329, 488318, 212465, 449038, 476810, 3382547, 852218, 651448, 480228,
+    1443266, 413208, 3357620, 1015560, 2980209, 214807, 304913, 670560,
+    2325882, 2182786, 3066025, 398668, 541101, 229913, 1456501, 2489805,
+    722777, 35301, 93619, 352745, 812164, 925411, 3212149, 451965, 688079,
+    1225761, 2362458, 2531991,
+]
+
+
+def _winsorized_mean_sd_pct(subdf: pd.DataFrame, cols: list[str]) -> tuple[pd.Series, pd.Series]:
+    ratios = subdf[cols].div(subdf["Total Asset"], axis=0) * 100
+    ratios = ratios.astype("float64")  # convert from pandas Float64Dtype to NumPy float64
+
+    mean = {}
+    sd = {}
+
+    for c in cols:
+        x = ratios[c].to_numpy(dtype=np.float64, na_value=np.nan)
+        x = x[~np.isnan(x)]
+
+        if len(x) == 0:
+            mean[c] = np.nan
+            sd[c] = np.nan
+            continue
+
+        w = winsorize(x, limits=[0.05, 0.05])
+        w = np.asarray(w, dtype=np.float64)
+
+        mean[c] = w.mean()
+        sd[c] = w.std(ddof=1) if len(w) > 1 else np.nan
+
+    return pd.Series(mean), pd.Series(sd)
+
+
+def calc_table_a1(bank_asset: pd.DataFrame) -> pd.DataFrame:
+    """
+    Paper-consistent Table A1 using the available asset rows.
+
+    Columns:
+    Aggregate, Full Sample, Full Sample (sd), Small, Small (sd),
+    Large (non-GSIB), Large (sd), GSIB, GSIB (sd)
+    """
+    df = bank_asset.copy()
+
+    required_cols = [
+        "bank_id",
+        "Total Asset",
+        "size_category",
+        "Cash",
+        "Security",
+        "Treasury",
+        "RMBS",
+        "CMBS",
+        "ABS",
+        "Other Security",
+        "Total Loan",
+        "Real Estate Loan",
+        "Residential Mortgage",
+        "Commercial Mortgage",
+        "Other Real Estate Loan",
+        "Agricultural Loan",
+        "Commercial & Industrial Loan",
+        "Consumer Loan",
+        "Loan to Non-Depository",
+        "Fed Funds Sold",
+        "Reverse Repo",
+    ]
+    missing = [c for c in required_cols if c not in df.columns]
+    if missing:
+        raise ValueError(f"calc_table_a1 missing required columns: {missing}")
+
+    value_cols = [c for c in required_cols if c not in ["bank_id", "size_category"]]
+    for c in value_cols:
+        df[c] = pd.to_numeric(df[c], errors="coerce")
+
+    df = df[df["Total Asset"] > 0].copy()
+
+    rows = [
+        "Total Asset $",
+        "Number of Banks",
+        "Cash",
+        "Security",
+        "Treasury",
+        "RMBS",
+        "CMBS",
+        "ABS",
+        "Other Security",
+        "Total Loan",
+        "Real Estate Loan",
+        "Residential Mortgage",
+        "Commercial Mortgage",
+        "Other Real Estate Loan",
+        "Agricultural Loan",
+        "Commercial & Industrial Loan",
+        "Consumer Loan",
+        "Loan to Non-Depository",
+        "Fed Funds Sold",
+        "Reverse Repo",
+    ]
+
+    out = pd.DataFrame(
+        index=rows,
+        columns=["Aggregate", "Full Sample", "Small", "Large (non-GSIB)", "GSIB"],
+        dtype="float64",
+    )
+
+    asset_rows = [
+        "Cash",
+        "Security",
+        "Treasury",
+        "RMBS",
+        "CMBS",
+        "ABS",
+        "Other Security",
+        "Total Loan",
+        "Real Estate Loan",
+        "Residential Mortgage",
+        "Commercial Mortgage",
+        "Other Real Estate Loan",
+        "Agricultural Loan",
+        "Commercial & Industrial Loan",
+        "Consumer Loan",
+        "Loan to Non-Depository",
+        "Fed Funds Sold",
+        "Reverse Repo",
+    ]
+
+    def _winsorized_mean_pct(subdf: pd.DataFrame, cols: list[str]) -> pd.Series:
+        if subdf.empty:
+            return pd.Series(index=cols, dtype="float64")
+
+        ratios = subdf[cols].div(subdf["Total Asset"], axis=0) * 100
+        ratios = ratios.astype("float64")
+
+        out_s = {}
+        for c in cols:
+            x = ratios[c].to_numpy(dtype=np.float64, na_value=np.nan)
+            x = x[~np.isnan(x)]
+
+            if len(x) == 0:
+                out_s[c] = np.nan
+                continue
+
+            w = winsorize(x, limits=[0.05, 0.05])
+            w = np.asarray(w, dtype=np.float64)
+            out_s[c] = float(np.mean(w))
+
+        return pd.Series(out_s)
+
+    # Aggregate
+    total_assets_sum = df["Total Asset"].sum()
+    out.loc["Total Asset $", "Aggregate"] = total_assets_sum
+    out.loc["Number of Banks", "Aggregate"] = float(len(df))
+    if total_assets_sum > 0:
+        out.loc[asset_rows, "Aggregate"] = (
+            df[asset_rows].sum() / total_assets_sum * 100
+        ).round(1)
+
+    # Full Sample
+    fs_mean = _winsorized_mean_pct(df, asset_rows)
+    out.loc["Total Asset $", "Full Sample"] = df["Total Asset"].mean()
+    out.loc["Number of Banks", "Full Sample"] = float(len(df))
+    out.loc[asset_rows, "Full Sample"] = fs_mean.round(1)
+
+    # Small
+    small = df[df["size_category"] == "Small"].copy()
+    sm_mean = _winsorized_mean_pct(small, asset_rows)
+    out.loc["Total Asset $", "Small"] = small["Total Asset"].mean()
+    out.loc["Number of Banks", "Small"] = float(len(small))
+    out.loc[asset_rows, "Small"] = sm_mean.round(1)
+
+    # Large (non-GSIB)
+    large = df[df["size_category"] == "Large non-GSIB"].copy()
+    lg_mean = _winsorized_mean_pct(large, asset_rows)
+    out.loc["Total Asset $", "Large (non-GSIB)"] = large["Total Asset"].mean()
+    out.loc["Number of Banks", "Large (non-GSIB)"] = float(len(large))
+    out.loc[asset_rows, "Large (non-GSIB)"] = lg_mean.round(1)
+
+    # GSIB
+    gsib = df[df["size_category"] == "GSIB"].copy()
+    gs_mean = _winsorized_mean_pct(gsib, asset_rows)
+    out.loc["Total Asset $", "GSIB"] = gsib["Total Asset"].mean()
+    out.loc["Number of Banks", "GSIB"] = float(len(gsib))
+    out.loc[asset_rows, "GSIB"] = gs_mean.round(1)
+
+    return out
+
+
+
+
 
 def calc_balance_sheet(
     rmbs_df,
