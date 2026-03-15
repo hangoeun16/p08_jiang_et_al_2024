@@ -10,10 +10,10 @@ Expected raw input:
 Usage
 -----
 Cache the raw file into _data:
-    python ./src/pull_struct_rel.py
+    python ./src/pull_struct_rel_2022.py
 
 Or import:
-    from src.pull_struct_rel import load_struct_rel_ultimate, load_struct_rel_2022
+    from src.pull_struct_rel_2022 import load_struct_rel_2022
 """
 from pathlib import Path
 import pandas as pd
@@ -29,10 +29,24 @@ FILE_ID = "1LGlv9qonDPOy7WEg054wNDlM1lsPiGjt"
 
 
 def pull_struct_rel_2022():
-    """
-    Download WRDS structural relationships parquet,
-    keep only reln_year == 2022,
-    and cache locally.
+    """Download and cache 2022 WRDS structural relationships data.
+ 
+    Downloads the full structural relationships parquet from Google Drive,
+    validates required columns, filters to reln_year == 2022, coerces RSSD
+    identifiers to nullable integer, strips whitespace from name fields,
+    and saves the result locally. If the cached file already exists, reads
+    and returns it directly.
+ 
+    Returns
+    -------
+    pd.DataFrame
+        Filtered structural relationships with columns: reln_year,
+        focal_rssd_id, focal_name, ultimate_rssd_id, ultimate_name.
+ 
+    Raises
+    ------
+    ValueError
+        If the downloaded parquet is missing any required columns.
     """
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -85,7 +99,16 @@ def pull_struct_rel_2022():
 
 
 def load_struct_rel_2022():
-    """Load cached structural relationship data."""
+    """Load cached 2022 structural relationship data from parquet.
+ 
+    Reads the cached parquet from DATA_DIR. If the cached file does not
+    exist, falls back to pull_struct_rel_2022() to download and build it.
+ 
+    Returns
+    -------
+    pd.DataFrame
+        Structural relationships filtered to reln_year == 2022.
+    """
     if not STRUCT_REL_2022_PATH.exists():
         return pull_struct_rel_2022()
 
