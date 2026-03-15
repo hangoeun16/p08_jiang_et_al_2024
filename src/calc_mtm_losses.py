@@ -6,7 +6,9 @@ Implements the MTM loss methodology from Section II of the paper:
     where multiplier = ΔiShares MBS ETF / ΔS&P Treasury Bond Index
 
 Bank size classification (Jiang et al. Table 1):
-  - GSIB: 17 globally systemically important banks (hardcoded list)
+  - GSIB: bank regulators’ definition as of Q1 2022 + 
+          U.S. chartered banks affiliated with holding companies that are 
+          classified as GSIB.
   - Large non-GSIB: total_assets > $1.384B and not GSIB
   - Small: total_assets <= $1.384B
 
@@ -48,6 +50,7 @@ struct_rel = load_struct_rel_2022()
 # 1) affiliates whose ultimate parent is a GSIB holding company
 # 2) affiliates whose immediate parent is a GSIB holding company
 # 3) GSIB parent entities themselves if they appear in the sample
+
 GSIB_IDS = set(
     struct_rel.loc[
         struct_rel["ultimate_rssd_id"].isin(GSIB_PARENT_IDS)
@@ -162,13 +165,22 @@ def calc_price_changes(etf_quarterly, start_date, end_date):
 
 
 def _aggregate_by_bank(df):
-    """Sum maturity bucket columns by bank_id, returning one row per bank."""
-    available_buckets = [b for b in BUCKET_COLS if b in df.columns]
-    return (
-        df.groupby(["bank_id", "bank_name"])[available_buckets]
-        .sum()
-        .reset_index()
-    )
+    """Sum maturity bucket columns by bank_id, returning one row per bank.
+ 
+    Groups the input DataFrame by (bank_id, bank_name) and sums all
+    available maturity bucket columns defined in BUCKET_COLS.
+ 
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Holdings data with 'bank_id', 'bank_name', and one or more maturity
+        bucket columns from BUCKET_COLS.
+ 
+    Returns
+    -------
+    pd.DataFrame
+        One row per (bank_id, bank_name) with summed bucket values.
+    """
 
 
 def calc_bank_losses(
