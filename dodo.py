@@ -105,6 +105,18 @@ def task_pull():
         "clean": [],
     }
 
+    yield {
+        "name": "struct_rel",
+        "doc": "Pull WRDS structural relationship parquet for GSIB mapping",
+        "actions": [
+            "ipython ./src/settings.py",
+            "ipython ./src/pull_struct_rel_2022.py",
+        ],
+        "targets": [DATA_DIR / "struct_rel_2022.parquet"],
+        "file_dep": ["./src/settings.py", "./src/pull_struct_rel_2022.py"],
+        "clean": [],
+    }
+
 
 def task_analysis():
     """Run full MTM loss analysis and save results to _data/."""
@@ -132,6 +144,7 @@ def task_analysis():
             DATA_DIR / "RCFD_Series_2.parquet",
             DATA_DIR / "RCFN_Series_1.parquet",
             DATA_DIR / "etf_prices.parquet",
+            DATA_DIR / "struct_rel_2022.parquet",
         ],
         "clean": [],
     }
