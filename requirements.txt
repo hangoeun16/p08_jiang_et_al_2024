@@ -32,6 +32,11 @@ xlrd>=2.0.1
 xlwings>=0.33.3
 zstandard>=0.23.0
 linearmodels>=6.1
+selenium
+yfinance
+gdown
+python-dateutil
+
 
 # Jupyter dependencies
 jupyter
