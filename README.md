@@ -41,8 +41,9 @@ doit
 | Stage | Description |
 |-------|-------------|
 | `doit config` | Create `_data/` and `_output/` directories |
-| `doit pull:wrds` | Pull WRDS Call Report data (RCON/RCFD series) |
+| `doit pull:wrds` | Pull WRDS Call Report data (RCON/RCFD/RCFN series) |
 | `doit pull:etf` | Pull iShares ETF prices via yfinance |
+| `doit pull:struct_rel` | Pull WRDS relation data |
 | `doit analysis` | Compute MTM losses, save results to `_data/` |
 | `doit outputs` | Generate LaTeX tables and Figure A1 in `_output/` |
 | `doit convert_notebooks` | Convert `.py` percent notebooks → `.ipynb` via jupytext |
@@ -61,6 +62,7 @@ p08_jiang_et_al_2024/
 │   ├── pull_wrds.py             # Pull WRDS Call Report data (4 series)
 │   ├── pull_ffiec.py            # Pull FFIEC Call Report data (4 series)
 │   ├── pull_etf_data.py         # Pull iShares ETF prices via yfinance
+│   ├── pull_struct_rel_2022.py  # Pull WRDS relation data 
 │   │
 │   ├── clean_data.py            # Extract tidy per-bank balance sheet items
 │   ├── calc_mtm_losses.py       # Core MTM loss methodology (RMBS multiplier, losses)
