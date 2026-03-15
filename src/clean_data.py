@@ -17,6 +17,8 @@ Import and call with loaded WRDS series DataFrames:
 
 import pandas as pd
 from pathlib import Path
+import numpy as np
+
 
 from settings import config
 
@@ -299,3 +301,296 @@ def clean_etf_prices(etf_data, start_date, end_date):
     """
     quarterly = etf_data.resample("QE").first()
     return quarterly.loc[start_date:end_date]
+
+def build_table_a1_assets(
+    rmbs_df: pd.DataFrame,
+    treasury_df: pd.DataFrame,
+    loans_df: pd.DataFrame,
+    other_loans_df: pd.DataFrame,
+    total_assets_df: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Build a per-bank wide asset frame for Table A1.
+
+    Uses already-cleaned inputs and preserves the existing size_category
+    classification from total_assets_df.
+
+    Returns
+    -------
+    pd.DataFrame
+        Columns:
+        bank_id, bank_name, size_category, Total Asset,
+        Security, Treasury, RMBS, Total Loan,
+        Residential Mortgage, Other Loans
+    """
+
+    def collapse(df: pd.DataFrame, value_name: str) -> pd.DataFrame:
+        """Collapse one cleaned holdings df to one row per bank_id."""
+        available = [c for c in BUCKET_COLS if c in df.columns]
+
+        out = df[["bank_id"]].copy()
+        if "bank_name" in df.columns:
+            out["bank_name"] = df["bank_name"]
+
+        out[value_name] = df[available].fillna(0).sum(axis=1) if available else 0
+
+        # one row per bank
+        agg_dict = {value_name: "sum"}
+        if "bank_name" in out.columns:
+            agg_dict["bank_name"] = "first"
+
+        out = out.groupby("bank_id", as_index=False).agg(agg_dict)
+        return out
+
+    rmbs = collapse(rmbs_df, "RMBS")
+    treasury = collapse(treasury_df, "Treasury")
+    loans = collapse(loans_df, "Residential Mortgage")
+    other_loans = collapse(other_loans_df, "Other Loans")
+
+    assets = total_assets_df.rename(columns={"total_assets": "Total Asset"})[
+        ["bank_id", "bank_name", "size_category", "Total Asset"]
+    ].copy()
+
+    bank_asset = (
+        assets.merge(rmbs[["bank_id", "RMBS"]], on="bank_id", how="left")
+              .merge(treasury[["bank_id", "Treasury"]], on="bank_id", how="left")
+              .merge(loans[["bank_id", "Residential Mortgage"]], on="bank_id", how="left")
+              .merge(other_loans[["bank_id", "Other Loans"]], on="bank_id", how="left")
+    )
+
+    for col in ["RMBS", "Treasury", "Residential Mortgage", "Other Loans"]:
+        bank_asset[col] = bank_asset[col].fillna(0)
+
+    # With current cleaned inputs, "Treasury" bucket is the available security measure.
+    # Keep both rows for now since you want the paper-style row structure.
+    bank_asset["Security"] = bank_asset["Treasury"]
+    bank_asset["Total Loan"] = (
+        bank_asset["Residential Mortgage"] + bank_asset["Other Loans"]
+    )
+
+    bank_asset = bank_asset[bank_asset["Total Asset"] > 0].copy()
+
+    return bank_asset[
+        [
+            "bank_id",
+            "bank_name",
+            "size_category",
+            "Total Asset",
+            "Security",
+            "Treasury",
+            "RMBS",
+            "Total Loan",
+            "Residential Mortgage",
+            "Other Loans",
+        ]
+    ].reset_index(drop=True)
+
+def build_table_a1_raw_frames(
+    rcon_series_1: pd.DataFrame,
+    rcon_series_2: pd.DataFrame,
+    rcfd_series_1: pd.DataFrame,
+    rcfd_series_2: pd.DataFrame,
+    rcfn_df: pd.DataFrame | None = None,
+    report_date=REPORT_DATE,
+):
+    """
+    Build raw quarter-end frames used by the notebook-style Table A1 construction.
+    """
+
+    rcon_1_df = _filter_date(rcon_series_1, report_date).sort_values("rssd9001").set_index("rssd9001")
+    rcon_2_df = _filter_date(rcon_series_2, report_date).sort_values("rssd9001").set_index("rssd9001")
+    rcon_df = pd.merge(rcon_1_df, rcon_2_df, left_index=True, right_index=True, how="inner")
+
+    rcfd_1_df = _filter_date(rcfd_series_1, report_date).sort_values("rssd9001").set_index("rssd9001")
+    rcfd_2_df = _filter_date(rcfd_series_2, report_date).sort_values("rssd9001").set_index("rssd9001")
+    rcfd_df = pd.merge(rcfd_1_df, rcfd_2_df, left_index=True, right_index=True, how="inner")
+
+    if rcfn_df is None:
+        rcfn_q_df = None
+    else:
+        rcfn_q_df = _filter_date(rcfn_df, report_date).sort_values("rssd9001").set_index("rssd9001")
+
+    return rcon_df, rcfd_df, rcfn_q_df
+
+
+
+def build_table_a1_assets_from_raw(
+    rcon_df: pd.DataFrame,
+    rcfd_df: pd.DataFrame,
+    rcfn_df: pd.DataFrame,
+    total_assets_df: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Reproduce the notebook-style bank_asset frame for Table A1 Panel A.
+
+    Parameters
+    ----------
+    rcon_df, rcfd_df, rcfn_df : pd.DataFrame
+        Quarter-end raw frames indexed by rssd9001.
+    total_assets_df : pd.DataFrame
+        Must already contain bank_id, bank_name, size_category, total_assets.
+
+    Returns
+    -------
+    pd.DataFrame
+        One row per bank with notebook-style Panel A columns plus
+        bank_id, bank_name, size_category.
+    """
+
+    def safe_sum(df: pd.DataFrame, cols: list[str]) -> pd.Series:
+        existing = [c for c in cols if c in df.columns]
+        if not existing:
+            return pd.Series(0.0, index=df.index, dtype="float64")
+        return df[existing].apply(pd.to_numeric, errors="coerce").fillna(0).sum(axis=1)
+
+    def safe_col(df: pd.DataFrame, col: str) -> pd.Series:
+        if col not in df.columns:
+            return pd.Series(np.nan, index=df.index, dtype="float64")
+        return pd.to_numeric(df[col], errors="coerce")
+
+    global_rmbs = [
+        "rcfdg301","rcfdg303","rcfdg305","rcfdg307","rcfdg309","rcfdg311",
+        "rcfdg313","rcfdg315","rcfdg317","rcfdg319","rcfdg321","rcfdg323",
+    ]
+    global_cmbs = ["rcfdk143","rcfdk145","rcfdk147","rcfdk149","rcfdk151","rcfdk153","rcfdk157"]
+    global_abs = ["rcfdc988","rcfdc027"]
+    global_other = ["rcfd1738","rcfd1741","rcfd1743","rcfd1746"]
+
+    global_rs_loan = [
+        "rcfdf158","rcfdf159","rcfd1420","rcfd1797","rcfd5367",
+        "rcfd5368","rcfd1460","rcfdf160","rcfdf161",
+    ]
+    global_rs_residential_loan = ["rcfd1420","rcfd1797","rcfd5367","rcfd5368","rcfd1460"]
+    global_rs_commercial_loan = ["rcfdf160","rcfdf161"]
+    global_rs_other_loan = ["rcfdf158","rcfdf159"]
+    global_ci_loan = ["rcfd1763","rcfd1764"]
+    global_consumer_loan = ["rcfdb538","rcfdb539","rcfdk137","rcfdk207"]
+
+    domestic_cash = ["rcon0081","rcon0071"]
+    domestic_total = ["rcon1771","rcon1773"]
+    domestic_treasury = ["rcon0213","rcon1287"]
+    domestic_rmbs = [
+        "rconht55","rconht57","rcong309","rcong311","rcong313",
+        "rcong315","rcong317","rcong319","rcong321","rcong323",
+    ]
+    domestic_cmbs = ["rconk143","rconk145","rconk147","rconk149","rconk151","rconk153","rconk157"]
+    domestic_abs = ["rconc988","rconc027","rconht59","rconht61"]
+    domestic_other = ["rcon1738","rcon1741","rcon1743","rcon1746"]
+
+    domestic_rs_loan = [
+        "rconf158","rconf159","rcon1420","rcon1797","rcon5367",
+        "rcon5368","rcon1460","rconf160","rconf161",
+    ]
+    domestic_rs_residential_loan = ["rcon1420","rcon1797","rcon5367","rcon5368","rcon1460"]
+    domestic_rs_commercial_loan = ["rconf160","rconf161"]
+    domestic_rs_other_loan = ["rconf158","rconf159"]
+    domestic_ci_loan = ["rcon1766"]
+    domestic_consumer_loan = ["rconb538","rconb539","rconk137","rconk207"]
+    domestic_non_rep_loan = ["rconj454","rconj464","rconj451"]
+
+    # Global/consolidated (RCFD)
+    rcfd_data = pd.DataFrame(index=rcfd_df.index)
+    rcfd_data["Total Asset"] = safe_col(rcfd_df, "rcfd2170")
+    rcfd_data["Cash"] = safe_col(rcfd_df, "rcfd0010")
+    rcfd_data["Security"] = safe_sum(rcfd_df, ["rcfd1771", "rcfd1773"])
+    rcfd_data["Treasury"] = safe_sum(rcfd_df, ["rcfd0213", "rcfd1287"])
+    rcfd_data["RMBS"] = safe_sum(rcfd_df, global_rmbs)
+    rcfd_data["CMBS"] = safe_sum(rcfd_df, global_cmbs)
+    rcfd_data["ABS"] = safe_sum(rcfd_df, global_abs)
+    rcfd_data["Other Security"] = safe_sum(rcfd_df, global_other)
+    rcfd_data["Total Loan"] = safe_col(rcfd_df, "rcfd2122")
+    rcfd_data["Real Estate Loan"] = safe_sum(rcfd_df, global_rs_loan)
+    rcfd_data["Residential Mortgage"] = safe_sum(rcfd_df, global_rs_residential_loan)
+    rcfd_data["Commercial Mortgage"] = safe_sum(rcfd_df, global_rs_commercial_loan)
+    rcfd_data["Other Real Estate Loan"] = safe_sum(rcfd_df, global_rs_other_loan)
+    rcfd_data["Agricultural Loan"] = safe_col(rcfd_df, "rcfd1590")
+    rcfd_data["Commercial & Industrial Loan"] = safe_sum(rcfd_df, global_ci_loan)
+    rcfd_data["Consumer Loan"] = safe_sum(rcfd_df, global_consumer_loan)
+    rcfd_data["Loan to Non-Depository"] = np.nan
+    rcfd_data["Fed Funds Sold"] = safe_col(rcon_df, "rconb987")
+    rcfd_data["Reverse Repo"] = safe_col(rcfd_df, "rcfdb989")
+
+    # Domestic (RCON)
+    rcon_data = pd.DataFrame(index=rcon_df.index)
+    rcon_data["Total Asset"] = safe_col(rcon_df, "rcon2170")
+    rcon_data["Cash"] = safe_sum(rcon_df, domestic_cash)
+    rcon_data["Security"] = safe_sum(rcon_df, domestic_total)
+    rcon_data["Treasury"] = safe_sum(rcon_df, domestic_treasury)
+    rcon_data["RMBS"] = safe_sum(rcon_df, domestic_rmbs)
+    rcon_data["CMBS"] = safe_sum(rcon_df, domestic_cmbs)
+    rcon_data["ABS"] = safe_sum(rcon_df, domestic_abs)
+    rcon_data["Other Security"] = safe_sum(rcon_df, domestic_other)
+    rcon_data["Total Loan"] = safe_col(rcon_df, "rcon2122")
+    rcon_data["Real Estate Loan"] = safe_sum(rcon_df, domestic_rs_loan)
+    rcon_data["Residential Mortgage"] = safe_sum(rcon_df, domestic_rs_residential_loan)
+    rcon_data["Commercial Mortgage"] = safe_sum(rcon_df, domestic_rs_commercial_loan)
+    rcon_data["Other Real Estate Loan"] = safe_sum(rcon_df, domestic_rs_other_loan)
+    rcon_data["Agricultural Loan"] = safe_col(rcon_df, "rcon1590")
+    rcon_data["Commercial & Industrial Loan"] = safe_sum(rcon_df, domestic_ci_loan)
+    rcon_data["Consumer Loan"] = safe_sum(rcon_df, domestic_consumer_loan)
+    rcon_data["Loan to Non-Depository"] = safe_sum(rcon_df, domestic_non_rep_loan)
+    rcon_data["Fed Funds Sold"] = safe_col(rcon_df, "rconb987")
+    rcon_data["Reverse Repo"] = safe_col(rcon_df, "rconb989")
+
+
+    bank_asset = pd.merge(
+        rcfd_data, rcon_data,
+        left_index=True, right_index=True, how="outer",
+        suffixes=("", "_domestic")
+    )
+
+    main_cols = [
+        "Total Asset", "Cash", "Security", "Treasury", "RMBS", "CMBS", "ABS",
+        "Other Security", "Total Loan", "Real Estate Loan", "Residential Mortgage",
+        "Commercial Mortgage", "Other Real Estate Loan", "Agricultural Loan",
+        "Commercial & Industrial Loan", "Consumer Loan", "Loan to Non-Depository",
+        "Fed Funds Sold", "Reverse Repo",
+    ]
+
+    replace_index = bank_asset[bank_asset["Cash"].isna()].index
+    domestic_cols = [f"{c}_domestic" for c in main_cols]
+    existing_domestic = [c for c in domestic_cols if c in bank_asset.columns]
+
+    for base_col in main_cols:
+        domestic_col = f"{base_col}_domestic"
+        if domestic_col in bank_asset.columns:
+            bank_asset.loc[replace_index, base_col] = bank_asset.loc[replace_index, domestic_col]
+
+
+    if "Loan to Non-Depository_domestic" in bank_asset.columns:
+        bank_asset["Loan to Non-Depository"] = bank_asset["Loan to Non-Depository_domestic"]
+
+    bank_asset = bank_asset.drop(columns=existing_domestic)
+
+    bank_asset = bank_asset.reset_index().rename(columns={"rssd9001": "bank_id"})
+    bank_asset = bank_asset.merge(
+        total_assets_df[["bank_id", "bank_name", "size_category"]],
+        on="bank_id",
+        how="left",
+    )
+
+    ordered_cols = [
+        "bank_id",
+        "bank_name",
+        "size_category",
+        "Total Asset",
+        "Cash",
+        "Security",
+        "Treasury",
+        "RMBS",
+        "CMBS",
+        "ABS",
+        "Other Security",
+        "Total Loan",
+        "Real Estate Loan",
+        "Residential Mortgage",
+        "Commercial Mortgage",
+        "Other Real Estate Loan",
+        "Agricultural Loan",
+        "Commercial & Industrial Loan",
+        "Consumer Loan",
+        "Loan to Non-Depository",
+        "Fed Funds Sold",
+        "Reverse Repo",
+    ]
+    return bank_asset[ordered_cols]
