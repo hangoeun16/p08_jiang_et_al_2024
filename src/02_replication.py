@@ -73,7 +73,7 @@ paper_targets = {
 print("\nComparison to paper targets:")
 for group, targets in paper_targets.items():
     if group in table1.columns:
-        our_loss = table1.loc["Aggregate Loss ($B)", group]
+        our_loss = table1.loc["Aggregate Loss", group]
         our_n = table1.loc["Number of Banks", group]
         print(f"  {group}:")
         print(f"    Aggregate Loss: ${our_loss:.0f}B (paper: ${targets['agg_loss_B']}B)")
