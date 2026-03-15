@@ -181,7 +181,12 @@ def _aggregate_by_bank(df):
     pd.DataFrame
         One row per (bank_id, bank_name) with summed bucket values.
     """
-
+    available_buckets = [b for b in BUCKET_COLS if b in df.columns]
+    return (
+        df.groupby(["bank_id", "bank_name"])[available_buckets]
+        .sum()
+        .reset_index()
+    )
 
 def calc_bank_losses(
     rmbs_df,
