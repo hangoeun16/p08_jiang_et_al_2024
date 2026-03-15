@@ -165,13 +165,22 @@ def calc_price_changes(etf_quarterly, start_date, end_date):
 
 
 def _aggregate_by_bank(df):
-    """Sum maturity bucket columns by bank_id, returning one row per bank."""
-    available_buckets = [b for b in BUCKET_COLS if b in df.columns]
-    return (
-        df.groupby(["bank_id", "bank_name"])[available_buckets]
-        .sum()
-        .reset_index()
-    )
+    """Sum maturity bucket columns by bank_id, returning one row per bank.
+ 
+    Groups the input DataFrame by (bank_id, bank_name) and sums all
+    available maturity bucket columns defined in BUCKET_COLS.
+ 
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Holdings data with 'bank_id', 'bank_name', and one or more maturity
+        bucket columns from BUCKET_COLS.
+ 
+    Returns
+    -------
+    pd.DataFrame
+        One row per (bank_id, bank_name) with summed bucket values.
+    """
 
 
 def calc_bank_losses(
