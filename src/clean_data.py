@@ -594,3 +594,125 @@ def build_table_a1_assets_from_raw(
         "Reverse Repo",
     ]
     return bank_asset[ordered_cols]
+
+def build_table_a1_liabilities_from_raw(
+    rcon_df: pd.DataFrame,
+    rcfd_df: pd.DataFrame,
+    rcfn_df: pd.DataFrame | None,
+    total_assets_df: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Build per-bank liability/equity frame for Table A1 Panel B.
+
+    Output columns:
+      bank_id, bank_name, size_category,
+      Total Asset, Total Liability, Domestic Deposit, Insured Deposit,
+      Uninsured Deposit, Uninsured Time Deposits,
+      Uninsured Long-Term Time Deposits, Uninsured Short-Term Time Deposits,
+      Foreign Deposit, Fed Fund Purchase, Repo, Other Liability,
+      Total Equity, Common Stock, Preferred Stock, Retained Earning
+    """
+    def safe_col(df: pd.DataFrame, col: str) -> pd.Series:
+        if df is None or col not in df.columns:
+            return pd.Series(np.nan, index=asset_base.index, dtype="float64")
+        s = pd.to_numeric(df[col], errors="coerce").astype("float64")
+        if "bank_id" in df.columns:
+            s.index = pd.to_numeric(df["bank_id"], errors="coerce")
+        return s.reindex(asset_base.index)
+
+    def first_nonnull(a: pd.Series, b: pd.Series) -> pd.Series:
+        a = pd.to_numeric(a, errors="coerce").astype("float64")
+        b = pd.to_numeric(b, errors="coerce").astype("float64")
+        return a.combine_first(b)
+
+    asset_base = total_assets_df[["bank_id", "bank_name", "size_category", "total_assets"]].copy()
+    asset_base["bank_id"] = pd.to_numeric(asset_base["bank_id"], errors="coerce")
+    asset_base = asset_base.rename(columns={"total_assets": "Total Asset"}).set_index("bank_id")
+
+    bank_liab = asset_base.copy()
+
+    # Core liabilities
+    bank_liab["Total Liability"] = first_nonnull(
+        safe_col(rcfd_df, "rcfd2948"),
+        safe_col(rcon_df, "rcon2948"),
+    )
+
+    bank_liab["Domestic Deposit"] = safe_col(rcon_df, "rcon2200")
+
+    bank_liab["Insured Deposit"] = (
+    safe_col(rcon_df, "rconf049").fillna(0)
+    + safe_col(rcon_df, "rconf045").fillna(0)
+    )
+
+    bank_liab["Uninsured Deposit"] = (
+        bank_liab["Domestic Deposit"].fillna(0)
+        - bank_liab["Insured Deposit"].fillna(0)
+    )
+
+    bank_liab["Uninsured Time Deposits"] = safe_col(rcon_df, "rconj474").fillna(0)
+
+    bank_liab["Uninsured Long-Term Time Deposits"] = (
+        safe_col(rcon_df, "rconhk14").fillna(0)
+        + safe_col(rcon_df, "rconhk15").fillna(0)
+    )
+
+    bank_liab["Uninsured Short-Term Time Deposits"] = safe_col(rcon_df, "rconk222").fillna(0)
+
+    bank_liab["Foreign Deposit"] = safe_col(rcfn_df, "rcfn2200").fillna(0)
+
+    bank_liab["Fed Fund Purchase"] = safe_col(rcon_df, "rconb993").fillna(0)
+
+    bank_liab["Repo"] = first_nonnull(
+        safe_col(rcfd_df, "rcfdb995"),
+        safe_col(rcon_df, "rconb995"),
+    ).fillna(0)
+
+    bank_liab["Other Liability"] = first_nonnull(
+        safe_col(rcfd_df, "rcfd2930"),
+        safe_col(rcon_df, "rcon2930"),
+    )
+
+    bank_liab["Total Equity"] = first_nonnull(
+        safe_col(rcfd_df, "rcfdg105"),
+        safe_col(rcon_df, "rcong105"),
+    )
+
+    bank_liab["Common Stock"] = first_nonnull(
+        safe_col(rcfd_df, "rcfd3230"),
+        safe_col(rcon_df, "rcon3230"),
+    ).fillna(0)
+
+    bank_liab["Preferred Stock"] = first_nonnull(
+        safe_col(rcfd_df, "rcfd3838"),
+        safe_col(rcon_df, "rcon3838"),
+    ).fillna(0)
+
+    bank_liab["Retained Earning"] = first_nonnull(
+        safe_col(rcfd_df, "rcfd3632"),
+        safe_col(rcon_df, "rcon3632"),
+    ).fillna(0)
+
+    bank_liab = bank_liab.reset_index()
+
+    ordered_cols = [
+        "bank_id",
+        "bank_name",
+        "size_category",
+        "Total Asset",
+        "Total Liability",
+        "Domestic Deposit",
+        "Insured Deposit",
+        "Uninsured Deposit",
+        "Uninsured Time Deposits",
+        "Uninsured Long-Term Time Deposits",
+        "Uninsured Short-Term Time Deposits",
+        "Foreign Deposit",
+        "Fed Fund Purchase",
+        "Repo",
+        "Other Liability",
+        "Total Equity",
+        "Common Stock",
+        "Preferred Stock",
+        "Retained Earning",
+    ]
+    return bank_liab[ordered_cols]
