@@ -40,7 +40,8 @@ bank_losses = pd.read_parquet(DATA_DIR / "bank_losses.parquet")
 uninsured_ratio = pd.read_parquet(DATA_DIR / "uninsured_ratio.parquet")
 insured_coverage = pd.read_parquet(DATA_DIR / "insured_coverage.parquet")
 table1 = pd.read_parquet(DATA_DIR / "table1.parquet")
-table_a1 = pd.read_parquet(DATA_DIR / "table_a1.parquet")
+table_a1_a = pd.read_parquet(DATA_DIR / "table_a1_panel_a.parquet")
+table_a1_b = pd.read_parquet(DATA_DIR / "table_a1_panel_b.parquet")
 
 print(f"Banks in sample: {len(bank_losses):,}")
 print(f"Total MTM loss: ${-bank_losses['total_loss'].sum()/1e9:.1f}B")
@@ -113,7 +114,16 @@ plt.show()
 print("=" * 60)
 print("TABLE A1: Balance Sheet Composition (Q1 2022, $billions)")
 print("=" * 60)
-print(table_a1.to_string())
+
+print("-" * 60)
+print("Panel A: Bank Asset Composition, Q1 2022")
+print("-" * 60)
+print(table_a1_a.to_string())
+
+print("-" * 60)
+print("Panel B: Bank Liability Composition, Q1 2022")
+print("-" * 60)
+print(table_a1_b.to_string())
 
 # %% [markdown]
 # ## Figure A1: Aggregate Bank Balance Sheet
