@@ -220,7 +220,34 @@ def pull_rcfd_series_2(start_date=START_DATE, end_date=END_DATE, wrds_username=W
     db.close()
     return df
 
+def pull_rcfn_series_1(start_date=START_DATE, end_date=END_DATE, wrds_username=WRDS_USERNAME):
+    """
+    Pull foreign-office deposit item needed for Table A1 Panel B.
+    from WRDS Call Reports.
 
+    Parameters
+    ----------
+    start_date : str or datetime
+    end_date : str or datetime
+    wrds_username : str
+
+    Returns
+    -------
+    pd.DataFrame
+    """
+    sql = f"""
+        SELECT
+            rcfn_1.rssd9001,
+            rcfn_1.rssd9017,
+            rcfn_1.rssd9999,
+            rcfn_1.rcfn2200
+        FROM bank.wrds_call_rcfn_1 AS rcfn_1
+        WHERE rcfn_1.rssd9999 BETWEEN '{start_date}' AND '{end_date}'
+    """
+    db = wrds.Connection(wrds_username=wrds_username)
+    df = db.raw_sql(sql, date_cols=["rssd9999"])
+    db.close()
+    return df\
 # ---------------------------------------------------------------------------
 # Load functions — read from cached parquet files
 # ---------------------------------------------------------------------------
@@ -244,6 +271,10 @@ def load_rcfd_series_1(data_dir=DATA_DIR):
 def load_rcfd_series_2(data_dir=DATA_DIR):
     """Load cached RCFD series 2 from _data/RCFD_Series_2.parquet."""
     return pd.read_parquet(Path(data_dir) / "RCFD_Series_2.parquet")
+
+def load_rcfn_series_1(data_dir=DATA_DIR):
+    """Load cached RCFN series 1 from _data/RCFN_Series_1.parquet."""
+    return pd.read_parquet(Path(data_dir) / "RCFN_Series_1.parquet")
 
 # ---------------------------------------------------------------------------
 # Helper: deduplicate and keep the recent record feeling
@@ -278,7 +309,8 @@ if __name__ == "__main__":
         ("RCON_Series_1", pull_rcon_series_1),
         ("RCON_Series_2", pull_rcon_series_2),
         ("RCFD_Series_1",pull_rcfd_series_1),
-        ("RCFD_Series_2",pull_rcfd_series_2)
+        ("RCFD_Series_2",pull_rcfd_series_2),
+        ("RCFN_Series_1",pull_rcfn_series_1)
     ]:
         df = pull_fn(wrds_username=WRDS_USERNAME)
         before = len(df)
