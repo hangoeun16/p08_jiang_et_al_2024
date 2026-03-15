@@ -17,6 +17,7 @@ The pipeline uses Q1 2022 WRDS Call Report balance sheet data and iShares ETF pr
 ```bash
 conda env create -f environment.yml
 conda activate p08_jiang_et_al_2024
+pip install -r requirements.txt
 ```
 
 You must also have TeX Live (or another LaTeX distribution) installed for the final PDF report ([macOS](https://tug.org/mactex/mactex-download.html), [Windows](https://tug.org/texlive/windows.html#install)).
