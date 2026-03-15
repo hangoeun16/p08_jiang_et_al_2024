@@ -32,7 +32,7 @@ def _format_panel_rows(df: pd.DataFrame) -> list[str]:
     lines = []
 
     for item, row in df.iterrows():
-        item_escaped = str(item).replace("$", r"\$").replace("%", r"\%")
+        item_escaped = str(item).replace("&", r"\&").replace("$", r"\$").replace("%", r"\%")
 
         mean_vals = [
             _fmt(row.get("Aggregate")),
@@ -65,7 +65,7 @@ def format_table_a1_latex(panel_a, panel_b):
         r"Entries are percentages of total assets. "
         r"All numbers except for aggregate are based on sample averages after winsorizing at the 5th and 95th percentiles. "
         r"Standard deviations are shown on the line below each mean. "
-        r"Small banks have total assets $\leq$ \$1.384B.}}",
+        r"Small banks have total assets $\leq$ \$1.384B.}",
         r"\label{tab:table_a1}",
         r"\small",
         rf"\begin{{tabular}}{{{col_spec}}}",
@@ -81,7 +81,7 @@ def format_table_a1_latex(panel_a, panel_b):
 
     lines += [
         r"\midrule",
-        r"\multicolumn{" + str(len(cols) + 1) + r"}{c}{\textbf{Panel B: Bank Liability Composition, Q1 2022}} \\",
+        r"\multicolumn{6}{c}{\textbf{Panel B: Bank Liability Composition, Q1 2022}} \\",
         r"\midrule",
     ]
 
