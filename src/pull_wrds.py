@@ -68,14 +68,32 @@ def pull_rcon_series_1(start_date=START_DATE, end_date=END_DATE, wrds_username=W
     # Only rcona555 (<3m) and rcona557 (1y-3y) exist in rcon_1.
     sql = f"""
         SELECT
-            b.rssd9001, b.rssd9017, b.rssd9999,
-            b.rcona555, b.rcona557,
-            b.rcona564, b.rcona565, b.rcona566, b.rcona567, b.rcona568, b.rcona569,
-            b.rcon5597,
-            b.rconf049, b.rconf045
-        FROM bank.wrds_call_rcon_1 AS b
-        WHERE b.rssd9999 BETWEEN '{start_date}' AND '{end_date}'
-    """
+            rcon_1.rssd9999, rcon_1.rssd9001,rcon_1.rssd9017,
+            rcon_1.RCON0071, rcon_1.RCON1773, rcon_1.RCONHT55,
+            rcon_1.RCONHT57, rcon_1.RCONG309, rcon_1.RCONG311,
+            rcon_1.RCONG313, rcon_1.RCONG315, rcon_1.RCONG317,
+            rcon_1.RCONG319, rcon_1.RCONG321, rcon_1.RCONG323,
+            rcon_1.RCONK143, rcon_1.RCONK145, rcon_1.RCONK147,
+            rcon_1.RCONK149, rcon_1.RCONK151, rcon_1.RCONK153,
+            rcon_1.RCONK155, rcon_1.RCONK157, rcon_1.RCONC988,
+            rcon_1.RCONC027, rcon_1.RCONHT59, rcon_1.RCONHT61,
+            rcon_1.RCON1743, rcon_1.RCON1746, rcon_1.RCONF158,
+            rcon_1.RCONF159, rcon_1.RCON5367, rcon_1.RCON5368,
+            rcon_1.RCONF160, rcon_1.RCONF161, rcon_1.RCON1590,
+            rcon_1.RCON1766, rcon_1.RCONB538, rcon_1.RCONK137,
+            rcon_1.RCONK207, rcon_1.rconj454, 
+            rcon_1.RCONB987, rcon_1.RCONJ451,
+            rcon_1.rconmt91, rcon_1.rconmt87, rcon_1.rconhk14, rcon_1.rconhk15,
+            rcon_1.rconb993, rcon_1.rcon3230,
+            rcon_1.rcona555, rcon_1.rcona557,
+            rcon_1.rcona564, rcon_1.rcona565, rcon_1.rcona566, rcon_1.rcona567, 
+            rcon_1.rcona568, rcon_1.rcona569,
+            rcon_1.rcon5597,
+            rcon_1.rconf049, rcon_1.rconf045
+
+        FROM bank.wrds_call_rcon_1 AS rcon_1
+        WHERE rcon_1.rssd9999 BETWEEN '{start_date}' AND '{end_date}'
+    """ 
     db = wrds.Connection(wrds_username=wrds_username)
     df = db.raw_sql(sql, date_cols=["rssd9999"])
     db.close()
@@ -103,13 +121,20 @@ def pull_rcon_series_2(start_date=START_DATE, end_date=END_DATE, wrds_username=W
     # are stored in rcon_2, not rcon_1. Include them here alongside treasuries.
     sql = f"""
         SELECT
-            b.rssd9001, b.rssd9017, b.rssd9999,
-            b.rcona549, b.rcona550, b.rcona551, b.rcona552, b.rcona553, b.rcona554,
-            b.rcona556, b.rcona558, b.rcona559, b.rcona560,
-            b.rcona570, b.rcona571, b.rcona572, b.rcona573, b.rcona574, b.rcona575,
-            b.rcon2170
-        FROM bank.wrds_call_rcon_2 AS b
-        WHERE b.rssd9999 BETWEEN '{start_date}' AND '{end_date}'
+            rcon_2.rssd9001,rcon_2.rssd9017, rcon_2.rssd9999,
+            rcon_2.rcon0081, rcon_2.rcon1771, rcon_2.rcon0213, 
+            rcon_2.rcon1287, rcon_2.rcon1738, rcon_2.rcon1741, rcon_2.rcon2122,
+            rcon_2.rcon1420, rcon_2.rcon1797, rcon_2.rcon1460, rcon_2.rconb539,
+            rcon_2.rconj464, rcon_2.rconb989,
+            rcon_2.rcon2200, rcon_2.rconhk05, rcon_2.rconj474, rcon_2.rconb995,
+            rcon_2.rconk222, rcon_2.rcon2948, rcon_2.rcon2930, rcon_2.rcong105,
+            rcon_2.rcon3838, rcon_2.rcon3632, rcon_2.rcon2170,
+            rcon_2.rcona549, rcon_2.rcona550, rcon_2.rcona551, rcon_2.rcona552,
+            rcon_2.rcona553, rcon_2.rcona554, rcon_2.rcona556, rcon_2.rcona558,
+            rcon_2.rcona559, rcon_2.rcona560, rcon_2.rcona570, rcon_2.rcona571,
+            rcon_2.rcona572, rcon_2.rcona573, rcon_2.rcona574, rcon_2.rcona575
+        FROM bank.wrds_call_rcon_2 AS rcon_2
+        WHERE rcon_2.rssd9999 BETWEEN '{start_date}' AND '{end_date}'
     """
     db = wrds.Connection(wrds_username=wrds_username)
     df = db.raw_sql(sql, date_cols=["rssd9999"])
@@ -138,11 +163,23 @@ def pull_rcfd_series_1(start_date=START_DATE, end_date=END_DATE, wrds_username=W
     # not exist in wrds_call_rcfd_1. Loan maturity data is RCON-only in WRDS.
     sql = f"""
         SELECT
-            b.rssd9001, b.rssd9017, b.rssd9999,
-            b.rcfda555, b.rcfda556, b.rcfda557, b.rcfda558, b.rcfda559, b.rcfda560,
-            b.rcfd0010
-        FROM bank.wrds_call_rcfd_1 AS b
-        WHERE b.rssd9999 BETWEEN '{start_date}' AND '{end_date}'
+            rcfd_1.rssd9001, rcfd_1.rssd9017,rcfd_1.rssd9999, 
+            rcfd_1.rcfd0010,rcfd_1.rcfd1773,rcfd_1.rcfdg301,rcfd_1.rcfdg303,
+            rcfd_1.rcfdg305,rcfd_1.rcfdg307,rcfd_1.rcfdg309,rcfd_1.rcfdg311,
+            rcfd_1.rcfdg313,rcfd_1.rcfdg315,rcfd_1.rcfdg317,rcfd_1.rcfdg319,
+            rcfd_1.rcfdg321,rcfd_1.rcfdg323,rcfd_1.rcfdk143,rcfd_1.rcfdk145,
+            rcfd_1.rcfdk147,rcfd_1.rcfdk149, rcfd_1.rcfdk151,rcfd_1.rcfdk153,
+            rcfd_1.rcfdk155,rcfd_1.rcfdk157, rcfd_1.rcfdc988,rcfd_1.rcfdc027,
+            rcfd_1.RCFD1738,rcfd_1.RCFD1741, rcfd_1.RCFD1743,rcfd_1.RCFD1746,
+            rcfd_1.rcfdf158,rcfd_1.rcfdf159, rcfd_1.rcfd5367,rcfd_1.rcfd5368,
+            rcfd_1.rcfdf160,rcfd_1.rcfdf161, rcfd_1.rcfd1590,rcfd_1.rcfd1763,
+            rcfd_1.rcfd1764,rcfd_1.rcfdb538, rcfd_1.rcfdb539,
+            rcfd_1.rcfdk137,rcfd_1.rcfdk207, 
+            rcfd_1.rcfd2930,rcfd_1.rcfd3230,
+            rcfd_1.rcfda556, rcfd_1.rcfda557,
+            rcfd_1.rcfda558, rcfd_1.rcfda559, rcfd_1.rcfda560
+        FROM bank.wrds_call_rcfd_1 AS rcfd_1
+        WHERE rcfd_1.rssd9999 BETWEEN '{start_date}' AND '{end_date}'
     """
     db = wrds.Connection(wrds_username=wrds_username)
     df = db.raw_sql(sql, date_cols=["rssd9999"])
@@ -168,11 +205,15 @@ def pull_rcfd_series_2(start_date=START_DATE, end_date=END_DATE, wrds_username=W
     """
     sql = f"""
         SELECT
-            b.rssd9001, b.rssd9017, b.rssd9999,
-            b.rcfda549, b.rcfda550, b.rcfda551, b.rcfda552, b.rcfda553, b.rcfda554,
-            b.rcfd2170
-        FROM bank.wrds_call_rcfd_2 AS b
-        WHERE b.rssd9999 BETWEEN '{start_date}' AND '{end_date}'
+            rcfd_2.rssd9001, rcfd_2.rssd9017, rcfd_2.rssd9999,
+            rcfd_2.rcfd1771, rcfd_2.rcfd0213, rcfd_2.rcfd1287, rcfd_2.rcfd2122,
+            rcfd_2.rcfd1420, rcfd_2.rcfd1797, rcfd_2.rcfd1460, rcfd_2.rcfdb989,
+            rcfd_2.rcfd2948, rcfd_2.rcfdg105, rcfd_2.rcfd3838, rcfd_2.rcfd3632,
+            rcfd_2.rcfda549, rcfd_2.rcfda550, rcfd_2.rcfda551, rcfd_2.rcfda552, 
+            rcfd_2.rcfda553, rcfd_2.rcfda554,
+            rcfd_2.rcfd2170
+        FROM bank.wrds_call_rcfd_2 AS rcfd_2
+        WHERE rcfd_2.rssd9999 BETWEEN '{start_date}' AND '{end_date}'
     """
     db = wrds.Connection(wrds_username=wrds_username)
     df = db.raw_sql(sql, date_cols=["rssd9999"])
