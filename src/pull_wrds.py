@@ -1,6 +1,6 @@
 """Pull and cache WRDS Call Report data needed to replicate Jiang et al. (2024).
 
-Fetches four Call Report data series from WRDS via SQL:
+Fetches five Call Report data series from WRDS via SQL:
   - RCON_Series_1: domestic balance sheet items (RMBS, first-lien mortgages,
     uninsured deposits, insured deposits) from wrds_call_rcon_1
   - RCON_Series_2: domestic securities (treasuries/other), other loans,
@@ -9,6 +9,7 @@ Fetches four Call Report data series from WRDS via SQL:
     mortgages, other loans, cash) from wrds_call_rcfd_1
   - RCFD_Series_2: domestic+foreign treasury securities, total assets
     from wrds_call_rcfd_2
+  - RCFN_Series_1_ffiec: foreign office deposits from wrds_call_rcfn_1 
 
 Each pull function saves results as parquet to DATA_DIR. Corresponding
 load_* functions read from those cached parquet files.
