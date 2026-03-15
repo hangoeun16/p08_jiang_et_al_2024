@@ -25,30 +25,36 @@ Usage
 
 import numpy as np
 import pandas as pd
+from pull_struct_rel_2022 import load_struct_rel_2022
 
 # ---------------------------------------------------------------------------
 # GSIB bank IDs (WRDS rssd9001 identifiers)
 # Source: Federal Reserve list of G-SIBs as of 2022
 # ---------------------------------------------------------------------------
-GSIB_IDS = [
-    852218,   # JPMorgan Chase
-    480228,   # Bank of America
-    476810,   # Citigroup
-    413208,   # HSBC North America
-    2980209,  # Barclays US
-    2182786,  # Goldman Sachs
-    541101,   # Bank of New York Mellon
-    655839,   # CCB Community Bank
-    1015560,  # ICBC Americas
-    229913,   # Mizuho
-    1456501,  # Morgan Stanley
-    722777,   # Santander BancorpUSA
-    35301,    # State Street
-    925411,   # Sumitomo Mitsui
-    497404,   # TD Bank US Holding
-    3212149,  # UBS Americas
-    451965,   # Wells Fargo
-]
+GSIB_PARENT_IDS = {
+    1039502,  # JPMORGAN
+    1073757,  # BANK OF AMERICA
+    1120754,  # WELLS FARGO
+    1951350,  # CITIGROUP
+    2162966,  # MORGAN STANLEY
+    2380443,  # GOLDMAN SACHS
+    35301,    # STATE STREET
+    3587146   # BNY MELLON
+}
+
+struct_rel = load_struct_rel_2022()
+
+# Broader GSIB mapping using professor-provided structural relationship data:
+# 1) affiliates whose ultimate parent is a GSIB holding company
+# 2) affiliates whose immediate parent is a GSIB holding company
+# 3) GSIB parent entities themselves if they appear in the sample
+GSIB_IDS = set(
+    struct_rel.loc[
+        struct_rel["ultimate_rssd_id"].isin(GSIB_PARENT_IDS)
+        | struct_rel["immediate_rssd_id"].isin(GSIB_PARENT_IDS),
+        "focal_rssd_id"
+    ].dropna().astype(int)
+) | GSIB_PARENT_IDS
 
 # Threshold for large vs. small classification ($1.384B in thousands)
 LARGE_THRESHOLD = 1_384_000  # $1.384B in $thousands
