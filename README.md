@@ -18,9 +18,9 @@ The pipeline uses Q1 2022 WRDS Call Report balance sheet data and iShares ETF pr
 | write up tex file | X | |
 | create tex file pipeline | X | |
 | data tour and summary stats | X | |
-| | | |
-| | | |
-| | | |
+| web scraping off FFIEC | | X |
+| create pipeline for data extension from 2023-2025 | | X |
+| fix WRDS data queries | | X |
 
 ---
 
