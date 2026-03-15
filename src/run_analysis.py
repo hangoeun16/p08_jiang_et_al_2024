@@ -36,6 +36,7 @@ import calc_summary_stats
 from clean_data import (
     build_table_a1_raw_frames,
     build_table_a1_assets_from_raw,
+    build_table_a1_liabilities_from_raw,
 )
 
 
@@ -49,6 +50,7 @@ def main():
     rcon2 = pull_wrds.load_rcon_series_2()
     rcfd1 = pull_wrds.load_rcfd_series_1()
     rcfd2 = pull_wrds.load_rcfd_series_2()
+    rcfn1 = pull_wrds.load_rcfn_series_1()
 
     print("Loading ETF data...")
     etf_raw = pull_etf_data.load_etf_data()
@@ -98,22 +100,29 @@ def main():
     # 8. Table A1 and Figure A1 data
     # Build raw frames for Table A1 (notebook replication path)
 
-    rcon_df, rcfd_df, _ = clean_data.build_table_a1_raw_frames(
+    rcon_df, rcfd_df, rcfn_df= clean_data.build_table_a1_raw_frames(
     rcon1,
     rcon2,
     rcfd1,
     rcfd2,
-    None
+    rcfn1
 )
 
     bank_asset_a1 = clean_data.build_table_a1_assets_from_raw(
     rcon_df,
     rcfd_df,
-    None,
+    rcfn_df,
     total_assets
 )
+    bank_liab_a1 = clean_data.build_table_a1_liabilities_from_raw(
+        rcon_df,
+        rcfd_df,
+        rcfn_df,
+        total_assets
+    )
     
-    table_a1 = calc_summary_stats.calc_table_a1(bank_asset_a1)
+    table_a1_panel_a = calc_summary_stats.calc_table_a1(bank_asset_a1)
+    table_a1_panel_b = calc_summary_stats.calc_table_a1_panel_b(bank_liab_a1)
     figure_a1_data = calc_summary_stats.calc_figure_a1_data(
         rmbs, loans, treasuries, other_loans, total_assets, bank_losses, uninsured, insured
     )
@@ -123,7 +132,8 @@ def main():
     uninsured_ratio.to_parquet(DATA_DIR / "uninsured_ratio.parquet")
     insured_coverage.to_parquet(DATA_DIR / "insured_coverage.parquet")
     table1.to_parquet(DATA_DIR / "table1.parquet")
-    table_a1.to_parquet(DATA_DIR / "table_a1.parquet")
+    table_a1_panel_a.to_parquet(DATA_DIR / "table_a1_panel_a.parquet")
+    table_a1_panel_b.to_parquet(DATA_DIR / "table_a1_panel_b.parquet")
 
     # Save figure data as a combined DataFrame (stacked)
     fig_df = pd.concat([
