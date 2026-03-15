@@ -6,7 +6,9 @@ Implements the MTM loss methodology from Section II of the paper:
     where multiplier = ΔiShares MBS ETF / ΔS&P Treasury Bond Index
 
 Bank size classification (Jiang et al. Table 1):
-  - GSIB: 17 globally systemically important banks (hardcoded list)
+  - GSIB: bank regulators’ definition as of Q1 2022 + 
+          U.S. chartered banks affiliated with holding companies that are 
+          classified as GSIB.
   - Large non-GSIB: total_assets > $1.384B and not GSIB
   - Small: total_assets <= $1.384B
 
@@ -48,6 +50,7 @@ struct_rel = load_struct_rel_2022()
 # 1) affiliates whose ultimate parent is a GSIB holding company
 # 2) affiliates whose immediate parent is a GSIB holding company
 # 3) GSIB parent entities themselves if they appear in the sample
+
 GSIB_IDS = set(
     struct_rel.loc[
         struct_rel["ultimate_rssd_id"].isin(GSIB_PARENT_IDS)
