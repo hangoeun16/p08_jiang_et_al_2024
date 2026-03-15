@@ -33,6 +33,10 @@ import clean_data
 import calc_mtm_losses
 import calc_table1
 import calc_summary_stats
+from clean_data import (
+    build_table_a1_raw_frames,
+    build_table_a1_assets_from_raw,
+)
 
 
 def main():
@@ -92,9 +96,24 @@ def main():
     print(table1.to_string())
 
     # 8. Table A1 and Figure A1 data
-    table_a1 = calc_summary_stats.calc_balance_sheet(
-        rmbs, loans, treasuries, other_loans, total_assets, uninsured, insured
-    )
+    # Build raw frames for Table A1 (notebook replication path)
+
+    rcon_df, rcfd_df, _ = clean_data.build_table_a1_raw_frames(
+    rcon1,
+    rcon2,
+    rcfd1,
+    rcfd2,
+    None
+)
+
+    bank_asset_a1 = clean_data.build_table_a1_assets_from_raw(
+    rcon_df,
+    rcfd_df,
+    None,
+    total_assets
+)
+    
+    table_a1 = calc_summary_stats.calc_table_a1(bank_asset_a1)
     figure_a1_data = calc_summary_stats.calc_figure_a1_data(
         rmbs, loans, treasuries, other_loans, total_assets, bank_losses, uninsured, insured
     )
