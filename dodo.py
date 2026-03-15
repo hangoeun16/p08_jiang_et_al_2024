@@ -192,6 +192,34 @@ def task_outputs():
         "clean": True,
     }
 
+    yield {
+        "name": "etf_table",
+        "doc": "Generate ETF price change summary table LaTeX file",
+        "actions": ["ipython ./src/create_etf_table.py"],
+        "targets": [OUTPUT_DIR / "table_etf.tex"],
+        "file_dep": [
+            "./src/create_etf_table.py",
+            DATA_DIR / "etf_prices.parquet",
+        ],
+        "clean": True,
+    }
+
+    yield {
+        "name": "fragility_figure",
+        "doc": "Generate bank fragility scatter plot (loss/assets vs. uninsured ratio)",
+        "actions": ["ipython ./src/create_fragility_figure.py"],
+        "targets": [
+            OUTPUT_DIR / "figure_fragility.pdf",
+            OUTPUT_DIR / "figure_fragility.png",
+        ],
+        "file_dep": [
+            "./src/create_fragility_figure.py",
+            DATA_DIR / "bank_losses.parquet",
+            DATA_DIR / "uninsured_ratio.parquet",
+        ],
+        "clean": True,
+    }
+
 
 def task_convert_notebooks():
     """Convert percent-format .py notebooks to .ipynb using jupytext."""
@@ -257,6 +285,8 @@ def task_compile_latex():
             OUTPUT_DIR / "table1.tex",
             OUTPUT_DIR / "table_a1.tex",
             OUTPUT_DIR / "figure_a1.pdf",
+            OUTPUT_DIR / "table_etf.tex",
+            OUTPUT_DIR / "figure_fragility.pdf",
         ],
         "clean": True,
     }
