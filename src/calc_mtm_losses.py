@@ -17,8 +17,14 @@ Maturity bucket → ETF mapping used for price change computation:
   '3m-1y' → 'iShares 0-1' (SHV, grouped with <3m as '<1y')
   '1y-3y' → 'iShares 1-3' (SHY)
   '3y-5y' → 'sp 3-5' (IEI)
-  '5y-15y'→ 'iShares 7-10' (IEF)
+  '5y-15y'→ 70% 'iShares 7-10' (IEF) + 30% 'iShares 10-20' (TLH)  [blended]
   '>15y'  → 'iShares 20+' (TLT)
+
+The 5y-15y bucket uses a blended price change rather than a single ETF because
+the WRDS maturity bucket spans bonds from 5 to 15 years. IEF (7-10yr) alone
+underestimates losses for the longer-duration bonds in this range (10-15yr).
+A 70/30 blend with TLH (10-20yr) better approximates the effective duration
+distribution across the full bucket.
 
 Usage
 -----
@@ -65,15 +71,21 @@ LARGE_THRESHOLD = 1_384_000  # $1.384B in $thousands
 # Maturity buckets (from clean_data.py)
 BUCKET_COLS = ["<3m", "3m-1y", "1y-3y", "3y-5y", "5y-15y", ">15y"]
 
-# Maps each maturity bucket to the ETF column used for price change
+# Maps each maturity bucket to the ETF column used for price change.
+# The 5y-15y bucket is handled separately via BLEND_5Y_15Y below.
 BUCKET_TO_ETF = {
-    "<3m":    "iShares 0-1",
-    "3m-1y":  "iShares 0-1",
-    "1y-3y":  "iShares 1-3",
-    "3y-5y":  "sp 3-5",
-    "5y-15y": "iShares 7-10",
-    ">15y":   "iShares 20+",
+    "<3m":   "iShares 0-1",
+    "3m-1y": "iShares 0-1",
+    "1y-3y": "iShares 1-3",
+    "3y-5y": "sp 3-5",
+    ">15y":  "iShares 20+",
 }
+
+# The WRDS 5y-15y bucket spans bonds from 5 to 15 years. Mapping it to IEF
+# (7-10yr) alone understates losses for the 10-15yr portion of the range.
+# A 70/30 blend of IEF and TLH (10-20yr) better approximates the effective
+# duration mix of holdings across the full 5-15yr bucket.
+BLEND_5Y_15Y = (("iShares 7-10", 0.70), ("iShares 10-20", 0.30))
 
 
 def classify_banks(total_assets_df):
@@ -160,6 +172,16 @@ def calc_price_changes(etf_quarterly, start_date, end_date):
         p_start = etf_quarterly.loc[start_ts, etf_col]
         p_end = etf_quarterly.loc[end_ts, etf_col]
         changes[bucket] = (p_end / p_start) - 1.0
+
+    # 5y-15y uses a blended price change: 70% IEF (7-10yr) + 30% TLH (10-20yr).
+    # See BLEND_5Y_15Y for rationale. TLH is downloaded by pull_etf_data.py but
+    # not used for any other bucket.
+    blended = 0.0
+    for etf_col, weight in BLEND_5Y_15Y:
+        p_start = etf_quarterly.loc[start_ts, etf_col]
+        p_end = etf_quarterly.loc[end_ts, etf_col]
+        blended += weight * ((p_end / p_start) - 1.0)
+    changes["5y-15y"] = blended
 
     return changes
 

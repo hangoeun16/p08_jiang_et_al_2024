@@ -22,11 +22,14 @@ REPORT_DATE = config("REPORT_DATE")
 MTM_END_DATE = config("MTM_END_DATE")
 
 # (ETF column name after yfinance rename, ticker symbol, maturity bucket label)
+# The 5y-15y bucket uses a 70/30 blend of IEF and TLH; both are listed here
+# so the table shows each ETF's individual price change for transparency.
 ETF_ROWS = [
     ("iShares 0-1",       "SHV",  r"$<$3m, 3m--1y"),
     ("iShares 1-3",       "SHY",  r"1y--3y"),
     ("sp 3-5",            "IEI",  r"3y--5y"),
-    ("iShares 7-10",      "IEF",  r"5y--15y"),
+    ("iShares 7-10",      "IEF",  r"5y--15y (70\% weight)"),
+    ("iShares 10-20",     "TLH",  r"5y--15y (30\% weight)"),
     ("iShares 20+",       "TLT",  r"$>$15y"),
     ("MBS ETF",           "MBB",  r"MBS multiplier (numerator)"),
     ("SP Treasury Index", "GOVT", r"Treasury index (denominator)"),
@@ -81,7 +84,12 @@ def format_etf_table_latex(etf_quarterly):
         r"The RMBS multiplier---the ratio of the MBS ETF price change (MBB) "
         r"to the broad Treasury index change (GOVT)---scales mortgage-related "
         r"losses to reflect the steeper decline in mortgage-backed security prices "
-        rf"relative to Treasuries (computed value: ${rmbs_mult:.4f}$)."
+        rf"relative to Treasuries (computed value: ${rmbs_mult:.4f}$). "
+        r"The 5y--15y maturity bucket uses a 70/30 blended price change of IEF "
+        r"and TLH rather than IEF alone; because the WRDS bucket spans bonds from "
+        r"5 to 15 years, IEF (7--10yr) understates losses for the longer-duration "
+        r"end of the range, and a blend with TLH (10--20yr) provides a more accurate "
+        r"effective duration proxy."
     )
 
     lines = [

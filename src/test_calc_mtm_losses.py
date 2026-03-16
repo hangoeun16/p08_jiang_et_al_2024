@@ -103,11 +103,15 @@ def test_rmbs_multiplier_greater_than_zero():
 
 
 def test_price_changes_all_buckets():
-    """calc_price_changes should return a key for every maturity bucket."""
-    from calc_mtm_losses import BUCKET_TO_ETF
+    """calc_price_changes should return a key for every maturity bucket.
+
+    5y-15y is no longer in BUCKET_TO_ETF (it uses a blend), so we check
+    against BUCKET_COLS instead to ensure all 6 buckets are present.
+    """
+    from calc_mtm_losses import BUCKET_COLS
     etf = _make_etf_quarterly([100, 90], [100, 85])
     changes = calc_price_changes(etf, "2022-03-31", "2023-03-31")
-    for bucket in BUCKET_TO_ETF:
+    for bucket in BUCKET_COLS:
         assert bucket in changes, f"Missing bucket: {bucket}"
 
 
