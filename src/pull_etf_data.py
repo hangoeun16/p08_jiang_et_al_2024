@@ -2,7 +2,7 @@
 
 Downloads daily adjusted closing prices for Treasury bond ETFs and the
 iShares MBS ETF via yfinance over the configured date range. These prices
-are used to compute percentage price changes from Q1 2022 to Q1 2023,
+are used to compute percentage price changes from Q1 2022 to Q4 2025,
 which serve as inputs to the mark-to-market loss methodology of
 Jiang et al. (2024).
 
@@ -33,7 +33,7 @@ from settings import config
 
 DATA_DIR = Path(config("DATA_DIR"))
 START_DATE = config("START_DATE")
-END_DATE = config("END_DATE")
+END_DATE = config("FFIEC_END_DATE")
 
 # Tickers and their descriptive column names
 ETF_TICKERS = {
