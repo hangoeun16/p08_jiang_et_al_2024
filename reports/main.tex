@@ -61,7 +61,8 @@ Bank-level balance sheet data come from the FFIEC Call Reports accessed
 through WRDS.  We use the Q1~2022 quarterly snapshot (report date
 2022-03-31) from four WRDS tables:
 \texttt{bank.wrds\_call\_rcon\_1}, \texttt{bank.wrds\_call\_rcon\_2},
-\texttt{bank.wrds\_call\_rcfd\_1}, and \texttt{bank.wrds\_call\_rcfd\_2}.
+\texttt{bank.wrds\_call\_rcfd\_1},
+ and \texttt{bank.wrds\_call\_rcfd\_2}.
 RCON codes cover domestic offices only; RCFD codes cover consolidated
 domestic and foreign offices.  For banks with foreign offices, we use RCFD
 values (which are weakly larger).
@@ -90,19 +91,37 @@ U.S.\ Treasury ETF price changes over the period Q1~2022 to Q1~2023:
 \toprule
 Maturity Bucket & ETF Ticker & Description \\
 \midrule
-$<$3m, 3m--1y & SHV & iShares Short Treasury Bond \\
-1y--3y         & SHY & iShares 1--3 Year Treasury Bond \\
-3y--5y         & IEI & iShares 3--7 Year Treasury Bond \\
-5y--15y        & IEF & iShares 7--10 Year Treasury Bond \\
-$>$15y         & TLT & iShares 20+ Year Treasury Bond \\
-MBS multiplier & MBB & iShares MBS ETF \\
-Treasury index & GOVT & iShares U.S.\ Treasury Bond \\
+$<$3m, 3m--1y          & SHV  & iShares Short Treasury Bond \\
+1y--3y                 & SHY  & iShares 1--3 Year Treasury Bond \\
+3y--5y                 & IEI  & iShares 3--7 Year Treasury Bond \\
+5y--15y (70\% weight)  & IEF  & iShares 7--10 Year Treasury Bond \\
+5y--15y (30\% weight)  & TLH  & iShares 10--20 Year Treasury Bond \\
+$>$15y                 & TLT  & iShares 20+ Year Treasury Bond \\
+MBS multiplier         & MBB  & iShares MBS ETF \\
+Treasury index         & GOVT & iShares U.S.\ Treasury Bond \\
 \bottomrule
 \end{tabular}
 \end{center}
 
 ETF prices are downloaded via \texttt{yfinance} and resampled to quarterly
-frequency. Note that the paper uses the S\&P 3-5 Year Treasury Bond Index (SPBDUS5T) for the 3y--5y bucket, but we use IEI as a proxy due to data availability.  This may lead to minor discrepancies in the MTM loss estimates for that bucket.
+frequency. Two methodological notes on ETF proxies: (1)~the paper uses the
+S\&P 3-5 Year Treasury Bond Index (SPBDUS5T) for the 3y--5y bucket, but we
+use IEI as a proxy due to data availability; (2)~the WRDS \texttt{5y--15y}
+maturity bucket spans bonds from 5 to 15 years, so IEF~(7--10yr) alone
+understates losses for the longer-duration portion of the range.  We apply a
+70/30 blended price change of IEF and TLH~(10--20yr) to better approximate
+the effective duration distribution of holdings across the full bucket.
+
+\subsection{Interest Rate Shock}
+
+Table~\ref{tab:table_etf} reports the actual price changes experienced by
+each ETF over the measurement window.  The table serves as a quantitative
+summary of the interest rate shock driving all downstream loss estimates:
+readers can see exactly how steeply price declines scaled with duration,
+and can verify the RMBS multiplier used to adjust mortgage-related losses.
+
+\clearpage
+\input{../_output/table_etf.tex}
 
 %=============================================================================
 \section{Methodology}\label{sec:method}
@@ -164,6 +183,10 @@ group.  Table~\ref{tab:table_a1} replicates Appendix Table~A1, showing the
 balance sheet composition of U.S.\ commercial banks as of Q1~2022.
 Figure~\ref{fig:figure_a1} replicates Figure~A1, plotting the distribution
 of asset categories across the bank size spectrum.
+Figure~\ref{fig:figure_fragility} provides our own analysis: a bank-level
+scatter plot showing which banks were simultaneously exposed to large MTM
+losses \emph{and} high uninsured deposit ratios---the combination most
+conducive to a depositor run.
 
 \clearpage
 \input{../_output/table1.tex}
@@ -182,6 +205,39 @@ of asset categories across the bank size spectrum.
 \end{figure}
 
 \clearpage
+\subsection{Bank Fragility: Loss Exposure vs.\ Uninsured Deposit Risk}
+
+Figure~\ref{fig:figure_fragility} plots the joint distribution of MTM
+loss rate and uninsured deposit reliance for every bank in the sample.
+The two dimensions together define a bank's fragility: a large loss alone
+need not be destabilizing if depositors are fully insured, and high
+uninsured deposits alone need not cause a run if asset values are intact.
+It is the combination---upper-right corner of the chart---that
+characterizes banks most vulnerable to the kind of self-fulfilling run
+that brought down Silicon Valley Bank in March 2023.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.88\textwidth]{../_output/figure_fragility.pdf}
+  \caption{Fragility Map: Mark-to-Market Loss Rate vs.\ Uninsured Deposit
+           Exposure by Bank Size.  Each point represents one of the 4,844
+           U.S.\ commercial banks as of Q1~2022.  The horizontal axis shows
+           each bank's MTM loss as a percentage of book assets; the vertical
+           axis shows uninsured deposits as a percentage of mark-to-market
+           assets.  Banks in the upper-right corner are most fragile: they
+           simultaneously suffered large valuation losses and fund themselves
+           primarily with uninsured depositors who may run if losses are
+           recognized.  The dashed horizontal line marks the 50\% uninsured
+           threshold, above which a majority of the deposit base is at risk of
+           flight.  Large non-GSIB banks and GSIBs tend to have elevated
+           uninsured ratios (reflecting institutional and wholesale funding
+           bases), while small community banks are more dispersed.  The shaded
+           region (loss $>9\%$, uninsured $>50\%$) contains the banks most
+           analogous to Silicon Valley Bank's pre-failure risk profile.}
+  \label{fig:figure_fragility}
+\end{figure}
+
+\clearpage
 %=============================================================================
 \section{Conclusion}
 %=============================================================================
@@ -194,6 +250,24 @@ particularly at mid-size banks, faced meaningful insolvency risk if MTM
 losses were recognized.  These results highlight the role of interest rate
 risk in bank fragility and the importance of accounting for unrealized losses
 in supervisory stress tests.
+
+%=============================================================================
+\section{Reflection}
+%=============================================================================
+
+\subsection{Joe Wang}
+My favorite part of this project was using doit to automate the data processing and replication steps.  In the middle of the semester, I was working on a quant competition, where we had
+to write a 10 page paper on stablecoin microstructure and have reproducable code alongside it, and I used doit to create the pipeline. It made it much easier to manage the data and 
+collaboration with my teammates. In this project, it was slightly different since we had the previous year's group's code to begin with. This made it a little tricky since refactoring the 
+existing code was honestly harder than starting from scratch since there were so many moving parts. I used Claude to create mappings for me to visualize folder structures and save time, which was 
+very helpful and also was my first time using ClaudeCode. That was a great experience since I don't think i would have tried ClaudeCode otherwise.
+
+The biggest challenge to me was working with the data from WRDS. The proejct made me realize how much work goes into processing the data since there were so many individual variables that must
+be understood and extracted. Without the previous year's code, I feel like I would have been completely lost. 
+
+
+\subsection{Summer Han}
+
 
 %=============================================================================
 \bibliographystyle{jpe}
