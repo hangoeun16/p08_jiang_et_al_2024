@@ -59,13 +59,18 @@ Section~\ref{sec:results} presents our replicated tables and figure.
 
 Bank-level balance sheet data come from the FFIEC Call Reports accessed
 through WRDS.  We use the Q1~2022 quarterly snapshot (report date
-2022-03-31) from four WRDS tables:
+2022-03-31) from five WRDS tables:
 \texttt{bank.wrds\_call\_rcon\_1}, \texttt{bank.wrds\_call\_rcon\_2},
-\texttt{bank.wrds\_call\_rcfd\_1},
- and \texttt{bank.wrds\_call\_rcfd\_2}.
+\texttt{bank.wrds\_call\_rcfd\_1}, \texttt{bank.wrds\_call\_rcfd\_2},
+and \texttt{bank.wrds\_call\_rcfn\_1}.
 RCON codes cover domestic offices only; RCFD codes cover consolidated
-domestic and foreign offices.  For banks with foreign offices, we use RCFD
-values (which are weakly larger).
+domestic and foreign offices; RCFN code covers RCFN codes cover foreign offices only.
+
+For the extended version, we obtain Single Period Call Reports directly
+from the FFIEC website through a web-scraping pipeline. These data span
+2022~Q4 to 2025~Q4 (with report date 2024-12-31). To maintain
+compatibility with the original pipeline, the scraped data are organised
+into the same five table structures used in the WRDS-based version.
 
 The balance sheet items extracted by maturity bucket (less than 3 months,
 3m--1y, 1y--3y, 3y--5y, 5y--15y, greater than 15 years) include:
@@ -132,7 +137,8 @@ and can verify the RMBS multiplier used to adjust mortgage-related losses.
 Banks are classified into three groups following \citet{jiang2024monetary}:
 \begin{itemize}
   \item \textbf{GSIB}: 17 Global Systemically Important Banks identified by
-        RSSD ID.
+        RSSD ID, including U.S. chartered banks affiliated with GSIB
+        holding companies.
   \item \textbf{Large non-GSIB}: Total assets $>$ \$1.384 billion (threshold
         from the paper).
   \item \textbf{Small}: Total assets $\leq$ \$1.384 billion.
@@ -252,6 +258,38 @@ risk in bank fragility and the importance of accounting for unrealized losses
 in supervisory stress tests.
 
 %=============================================================================
+% FFIEC Extension (2024-2025) — included only if outputs exist
+%=============================================================================
+\IfFileExists{../_output/table1_ffiec.tex}{%
+\clearpage
+\section{Extension: Updated Analysis Using FFIEC Data (Q4 2023--Q4 2025)}
+ 
+To examine whether bank fragility persisted beyond the original study period,
+we extend the analysis to Q4~2023--Q4~2025 using FFIEC Single Period Call Reports
+data. The methodology is identical: we apply the same ETF-based MTM loss
+framework and RMBS multiplier to the updated balance sheet snapshot.
+ 
+\input{../_output/table1_ffiec.tex}
+ 
+\IfFileExists{../_output/table_a1_ffiec.tex}{%
+\clearpage
+\input{../_output/table_a1_ffiec.tex}
+}{}
+ 
+\IfFileExists{../_output/figure_a1_ffiec.pdf}{%
+\clearpage
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{../_output/figure_a1_ffiec.pdf}
+  \caption{Balance sheet composition of U.S.\ commercial banks as of
+           Q4~2024 (FFIEC extension).}
+  \label{fig:figure_a1_ffiec}
+\end{figure}
+}{}
+}{}% end \IfFileExists{table1_ffiec}
+ 
+
+%=============================================================================
 \section{Reflection}
 %=============================================================================
 
@@ -267,7 +305,22 @@ be understood and extracted. Without the previous year's code, I feel like I wou
 
 
 \subsection{Summer Han}
+My favourite part of this project was how I ended up learning about bank fragility and mark-to-market losses not from a textbook, 
+but backwards, through last year’s group’s code and data. I had no background in 
+fixed income or banking regulation going in. But tracing through the pipeline, 
+working out what each variable actually represents, and understanding why RMBS 
+requires a different multiplier from Treasuries,  that process of reverse-engineering 
+meaning from code and data was genuinely refreshing and enjoyable. It felt like 
+a far more honest way to learn than beginning from first principles.
 
+My main contribution was extending the pipeline to pull FFIEC Call Report data 
+for 2023–2025 and filling in the gaps across the codebase so that everything 
+runs end-to-end. That second part was surprisingly enjoyable. It felt like 
+solving a puzzle, where each missing piece I discovered helped me understand 
+the system more clearly. Working out which variables belonged to which FFIEC 
+schedules, why certain type conversions broke downstream, or how to parameterise 
+a module so that it could serve both WRDS and FFIEC without breaking anything 
+— each fix deepened my understanding of both the code and the underlying finance. 
 
 %=============================================================================
 \bibliographystyle{jpe}
