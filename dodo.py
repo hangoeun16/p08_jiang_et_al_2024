@@ -39,7 +39,23 @@ from pathlib import Path
 
 from settings import config
 
-DOIT_CONFIG = {"backend": "sqlite3", "dep_file": "./.doit-db.sqlite"}
+DOIT_CONFIG = {
+    "backend": "sqlite3",
+    "dep_file": "./.doit-db.sqlite",
+    "default_tasks": [
+        "config",
+        "pull:wrds",
+        "pull:etf",
+        "pull:struct_rel",
+        "analysis",
+        "outputs:table1",
+        "outputs:table_a1",
+        "outputs:figure_a1",
+        "convert_notebooks",
+        "run_notebooks",
+        "compile_latex",
+    ],
+}
 
 DATA_DIR = config("DATA_DIR")
 OUTPUT_DIR = config("OUTPUT_DIR")
@@ -407,10 +423,6 @@ def task_compile_latex():
             OUTPUT_DIR / "table1.tex",
             OUTPUT_DIR / "table_a1.tex",
             OUTPUT_DIR / "figure_a1.pdf",
-            # FFIEC outputs for comparison section
-            OUTPUT_DIR / "table1_ffiec.tex",
-            OUTPUT_DIR / "table_a1_ffiec.tex",
-            OUTPUT_DIR / "figure_a1_ffiec.pdf",
         ],
         "clean": True,
     }
@@ -421,6 +433,7 @@ def task_ffiec():
     return {
         "actions": None,
         "task_dep": [
+            "config",
             "pull:ffiec",
             "pull:etf",
             "pull:struct_rel_ffiec",
