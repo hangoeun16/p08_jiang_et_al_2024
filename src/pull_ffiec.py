@@ -630,7 +630,7 @@ def pull_rcfd_series_1(
             "RCFD1420", "RCFD1460", "RCFD1797", "RCFD2122",
         ],
         "RC": [
-            "RCFD2930", "RCFD3230", "RCFDB989", "RCFDG105",
+            "RCFD2930", "RCFD3230", "RCFDB989", "RCFDB995", "RCFDG105",
             "RCFD3838", "RCFD3632", "RCFD2948", "RCFN2200",
         ],
     }
@@ -653,7 +653,7 @@ def pull_rcfd_series_1(
         "rcfdf158", "rcfdf159", "rcfdf160", "rcfdf161",
         "rcfd5367", "rcfd5368", "rcfd1590", "rcfd1763", "rcfd1764",
         "rcfd1420", "rcfd1460", "rcfd1797", "rcfd2122",
-        "rcfd2930", "rcfd3230", "rcfdb989", "rcfdg105",
+        "rcfd2930", "rcfd3230", "rcfdb989", "rcfdb995", "rcfdg105",
         "rcfd3838", "rcfd3632", "rcfd2948", "rcfn2200",
     ]
     existing = [c for c in col_order if c in result.columns]
