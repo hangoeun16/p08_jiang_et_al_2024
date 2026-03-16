@@ -5,18 +5,18 @@ Pipeline stages:
 
   WRDS track (original Jiang et al. replication, 2021 Q4 – 2023 Q3):
   2. pull:wrds         — pull WRDS Call Report data, save to _data/*.parquet
-  3. pull:etf          — pull ETF prices via yfinance
-  4. pull:struct_rel   — pull WRDS structural relationship (2022) for GSIB mapping
-  5. analysis          — run MTM loss analysis on WRDS data
-  6. outputs           — generate Table 1, Table A1, Figure A1 from WRDS results
+  3. pull:struct_rel   — pull structural relationship (2022) for GSIB mapping
+  4. analysis          — run MTM loss analysis on WRDS data
+  5. outputs           — generate Table 1, Table A1, Figure A1 from WRDS results
 
   FFIEC track (extension, 2023 Q4 – 2025 Q4):
-  7. pull:ffiec        — pull FFIEC Call Report data, save to _data/*_ffiec.parquet
-  8. pull:struct_rel_ffiec — pull structural relationship for FFIEC time range
-  9. analysis_ffiec    — run MTM loss analysis on FFIEC data
-  10. outputs_ffiec    — generate Table 1, Table A1, Figure A1 from FFIEC results
+  6. pull:ffiec        — pull FFIEC Call Report data, save to _data/*_ffiec.parquet
+  7. pull:struct_rel_ffiec — pull structural relationship (2024) for GSIB mapping
+  8. analysis_ffiec    — run MTM loss analysis on FFIEC data
+  9. outputs_ffiec     — generate Table 1, Table A1, Figure A1 from FFIEC results
 
-  Shared / final:
+  Shared:
+  10. pull:etf          — pull ETF prices via yfinance (used by both tracks)
   11. convert_notebooks — convert .py percent notebooks → .ipynb via jupytext
   12. run_notebooks     — execute notebooks and export to HTML
   13. compile_latex     — build PDF report via latexmk
@@ -28,7 +28,7 @@ Run only WRDS track:
     doit pull:wrds pull:etf pull:struct_rel analysis outputs
 
 Run only FFIEC track:
-    doit pull:ffiec pull:etf pull:struct_rel_ffiec analysis_ffiec outputs_ffiec
+    doit ffiec
 """
 
 import sys
@@ -165,7 +165,7 @@ def task_pull():
         "doc": "Pull structural relationship parquet for GSIB mapping (2024)",
         "actions": [
             "ipython ./src/settings.py",
-            "ipython ./src/pull_struct_rel.py -- --year 2024",
+            "python ./src/pull_struct_rel.py --year 2024",
         ],
         "targets": [DATA_DIR / "struct_rel_2024.parquet"],
         "file_dep": ["./src/settings.py", "./src/pull_struct_rel.py"],
@@ -213,7 +213,7 @@ def task_analysis():
 def task_analysis_ffiec():
     """Run full MTM loss analysis on FFIEC data and save results to _data/."""
     return {
-        "actions": ["ipython ./src/run_analysis.py -- --source ffiec"],
+        "actions": ["python ./src/run_analysis.py --source ffiec"],
         "targets": [
             DATA_DIR / "bank_losses_ffiec.parquet",
             DATA_DIR / "uninsured_ratio_ffiec.parquet",
@@ -289,41 +289,13 @@ def task_outputs():
         "clean": True,
     }
 
-    yield {
-        "name": "etf_table",
-        "doc": "Generate ETF price change summary table LaTeX file",
-        "actions": ["ipython ./src/create_etf_table.py"],
-        "targets": [OUTPUT_DIR / "table_etf.tex"],
-        "file_dep": [
-            "./src/create_etf_table.py",
-            DATA_DIR / "etf_prices.parquet",
-        ],
-        "clean": True,
-    }
-
-    yield {
-        "name": "fragility_figure",
-        "doc": "Generate bank fragility scatter plot (loss/assets vs. uninsured ratio)",
-        "actions": ["ipython ./src/create_fragility_figure.py"],
-        "targets": [
-            OUTPUT_DIR / "figure_fragility.pdf",
-            OUTPUT_DIR / "figure_fragility.png",
-        ],
-        "file_dep": [
-            "./src/create_fragility_figure.py",
-            DATA_DIR / "bank_losses.parquet",
-            DATA_DIR / "uninsured_ratio.parquet",
-        ],
-        "clean": True,
-    }
-
 
 def task_outputs_ffiec():
     """Generate LaTeX tables and figures from FFIEC analysis results."""
     yield {
         "name": "table1",
         "doc": "Generate Table 1 LaTeX file (FFIEC)",
-        "actions": ["ipython ./src/create_table1.py -- --source ffiec"],
+        "actions": ["python ./src/create_table1.py --source ffiec"],
         "targets": [OUTPUT_DIR / "table1_ffiec.tex"],
         "file_dep": [
             "./src/create_table1.py",
@@ -335,7 +307,7 @@ def task_outputs_ffiec():
     yield {
         "name": "table_a1",
         "doc": "Generate Table A1 LaTeX file (FFIEC)",
-        "actions": ["ipython ./src/create_table_a1.py -- --source ffiec"],
+        "actions": ["python ./src/create_table_a1.py --source ffiec"],
         "targets": [OUTPUT_DIR / "table_a1_ffiec.tex"],
         "file_dep": [
             "./src/create_table_a1.py",
@@ -348,7 +320,7 @@ def task_outputs_ffiec():
     yield {
         "name": "figure_a1",
         "doc": "Generate Figure A1 PDF and PNG (FFIEC)",
-        "actions": ["ipython ./src/create_figure_a1.py -- --source ffiec"],
+        "actions": ["python ./src/create_figure_a1.py --source ffiec"],
         "targets": [
             OUTPUT_DIR / "figure_a1_ffiec.pdf",
             OUTPUT_DIR / "figure_a1_ffiec.png",
@@ -435,15 +407,26 @@ def task_compile_latex():
             OUTPUT_DIR / "table1.tex",
             OUTPUT_DIR / "table_a1.tex",
             OUTPUT_DIR / "figure_a1.pdf",
-<<<<<<< Updated upstream
-            OUTPUT_DIR / "table_etf.tex",
-            OUTPUT_DIR / "figure_fragility.pdf",
-=======
             # FFIEC outputs for comparison section
             OUTPUT_DIR / "table1_ffiec.tex",
             OUTPUT_DIR / "table_a1_ffiec.tex",
             OUTPUT_DIR / "figure_a1_ffiec.pdf",
->>>>>>> Stashed changes
         ],
         "clean": True,
+    }
+
+
+def task_ffiec():
+    """Run the entire FFIEC extension pipeline (pull → analysis → outputs)."""
+    return {
+        "actions": None,
+        "task_dep": [
+            "pull:ffiec",
+            "pull:etf",
+            "pull:struct_rel_ffiec",
+            "analysis_ffiec",
+            "outputs_ffiec:table1",
+            "outputs_ffiec:table_a1",
+            "outputs_ffiec:figure_a1",
+        ],
     }
