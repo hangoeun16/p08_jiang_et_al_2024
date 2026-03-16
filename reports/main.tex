@@ -263,28 +263,74 @@ in supervisory stress tests.
 \IfFileExists{../_output/table1_ffiec.tex}{%
 \clearpage
 \section{Extension: Updated Analysis Using FFIEC Data (Q4 2023--Q4 2025)}
- 
-To examine whether bank fragility persisted beyond the original study period,
-we extend the analysis to Q4~2023--Q4~2025 using FFIEC Single Period Call Reports
-data. The methodology is identical: we apply the same ETF-based MTM loss
-framework and RMBS multiplier to the updated balance sheet snapshot.
- 
+
+\subsection{Motivation}
+
+The original \citet{jiang2024monetary} analysis captures a single snapshot---Q1~2022 balance
+sheets marked to Q1~2023 prices---near the beginning of the Federal Reserve's tightening
+cycle.  To understand the full arc of the episode, one needs to track conditions through the
+peak and into the subsequent easing.  The Fed held the federal funds rate at
+5.25--5.50\% from July~2023 through September~2024, the highest level in two decades,
+before cutting rates by a cumulative 100 basis points through the end of 2024.  During this
+window, the banking sector operated under the implicit subsidy of the Bank Term Funding
+Program (BTFP), which allowed banks to borrow against par value of Treasury and
+agency securities through March~2024, partially alleviating liquidity pressure from
+unrealized losses.
+
+This extension asks: \emph{did bank fragility persist, diminish, or worsen as the rate
+environment evolved?}  The analysis uses the same ETF-based MTM loss methodology applied to
+balance sheet snapshots from Q4~2023 to Q4~2025, sourced directly from FFIEC Single Period
+Call Reports rather than WRDS.  The ETF price change window shifts accordingly---Q4~2023
+balance sheets are marked to Q4~2024 prices, and so on---capturing the incremental
+loss or gain from interest rate movements within each annual holding period.
+
+\subsection{Results}
+
+Table~\ref{tab:table1_ffiec} replicates the Table~1 structure for the FFIEC extension
+period.  The key comparison is the aggregate loss and Loss/Asset ratio relative to
+the original Q1~2022 snapshot: a lower loss rate would indicate that rising rates have
+been fully priced in (or that banks actively de-risked fixed-income portfolios following
+the SVB episode), while a persistently elevated loss rate would suggest that system-wide
+vulnerabilities remain.
+
 \input{../_output/table1_ffiec.tex}
- 
+
 \IfFileExists{../_output/table_a1_ffiec.tex}{%
 \clearpage
+
+Table~\ref{tab:table_a1_ffiec} shows the balance sheet composition as of the FFIEC
+extension snapshot date.  Changes in the securities share and the residential mortgage
+share relative to Table~A1 (Q1~2022) reflect portfolio rebalancing decisions made in
+response to the rate environment: banks that sold longer-duration securities realized
+losses but reduced future mark-to-market exposure; those that held experienced continued
+unrealized depreciation.
+
 \input{../_output/table_a1_ffiec.tex}
 }{}
- 
+
 \IfFileExists{../_output/figure_a1_ffiec.pdf}{%
 \clearpage
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\textwidth]{../_output/figure_a1_ffiec.pdf}
-  \caption{Balance sheet composition of U.S.\ commercial banks as of
-           Q4~2024 (FFIEC extension).}
+  \caption{Balance sheet composition of U.S.\ commercial banks as of the FFIEC
+           extension snapshot date.  Analogous to Figure~A1 but for the extended
+           sample period.  Compare with Figure~\ref{fig:figure_a1} (Q1~2022) to
+           assess portfolio rebalancing over the tightening cycle.}
   \label{fig:figure_a1_ffiec}
 \end{figure}
+
+Figure~\ref{fig:figure_a1_ffiec} shows the aggregate asset and liability mix for the
+extended period.  A shift away from long-duration securities relative to the Q1~2022
+baseline (Figure~\ref{fig:figure_a1}) would signal active de-risking; a stable or
+growing securities share would indicate that banks continued to hold impaired portfolios.
+The liability side is equally informative: rising uninsured deposit ratios would suggest
+that institutional depositors remain a potential run channel even as the acute crisis
+of 2023 receded.
+
+Together, these results provide a dynamic view of U.S.\ bank fragility across the full
+rate cycle---from the shock origination in 2022, through the peak in 2023--2024, and
+into the early easing phase of 2024--2025.
 }{}
 }{}% end \IfFileExists{table1_ffiec}
  
