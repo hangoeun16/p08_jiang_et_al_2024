@@ -316,11 +316,15 @@ def build_table_a1_raw_frames(
 
     rcon_1_df = _filter_date(rcon_series_1, report_date).sort_values("rssd9001").set_index("rssd9001")
     rcon_2_df = _filter_date(rcon_series_2, report_date).sort_values("rssd9001").set_index("rssd9001")
-    rcon_df = pd.merge(rcon_1_df, rcon_2_df, left_index=True, right_index=True, how="inner")
+    # Drop overlapping columns from series_2 (keep series_1 version)
+    rcon_overlap = [c for c in rcon_2_df.columns if c in rcon_1_df.columns]
+    rcon_df = pd.merge(rcon_1_df, rcon_2_df.drop(columns=rcon_overlap), left_index=True, right_index=True, how="inner")
 
     rcfd_1_df = _filter_date(rcfd_series_1, report_date).sort_values("rssd9001").set_index("rssd9001")
     rcfd_2_df = _filter_date(rcfd_series_2, report_date).sort_values("rssd9001").set_index("rssd9001")
-    rcfd_df = pd.merge(rcfd_1_df, rcfd_2_df, left_index=True, right_index=True, how="inner")
+    # Drop overlapping columns from series_2 (keep series_1 version)
+    rcfd_overlap = [c for c in rcfd_2_df.columns if c in rcfd_1_df.columns]
+    rcfd_df = pd.merge(rcfd_1_df, rcfd_2_df.drop(columns=rcfd_overlap), left_index=True, right_index=True, how="inner")
 
     if rcfn_df is None:
         rcfn_q_df = None
