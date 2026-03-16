@@ -74,7 +74,7 @@ Run the entire FFIEC track with one command: **`doit ffiec`**
 
 | Stage | Description |
 |-------|-------------|
-| `doit pull:ffiec` | Pull FFIEC CDR bulk Call Report data (`*_ffiec.parquet`) |
+| `doit pull:ffiec` | Web-scrape FFIEC CDR bulk Call Report data (RCON/RCFD/RCFN series) to `_data/ffiec_data/`, convert and save (`*_ffiec.parquet`) |
 | `doit pull:struct_rel_ffiec` | Pull structural relationship data (2024) for GSIB mapping |
 | `doit analysis_ffiec` | Compute MTM losses on FFIEC data, save results to `_data/*_ffiec.parquet` |
 | `doit outputs_ffiec` | Generate LaTeX tables and Figure A1 (`*_ffiec.tex/pdf/png`) in `_output/` |
