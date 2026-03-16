@@ -51,6 +51,8 @@ DOIT_CONFIG = {
         "outputs:table1",
         "outputs:table_a1",
         "outputs:figure_a1",
+        "outputs:table_etf",
+        "outputs:figure_fragility",
         "convert_notebooks",
         "run_notebooks",
         "compile_latex",
@@ -305,6 +307,34 @@ def task_outputs():
         "clean": True,
     }
 
+    yield {
+        "name": "table_etf",
+        "doc": "Generate ETF price change summary table",
+        "actions": ["ipython ./src/create_etf_table.py"],
+        "targets": [OUTPUT_DIR / "table_etf.tex"],
+        "file_dep": [
+            "./src/create_etf_table.py",
+            DATA_DIR / "etf_prices.parquet",
+        ],
+        "clean": True,
+    }
+
+    yield {
+        "name": "figure_fragility",
+        "doc": "Generate bank fragility scatter plot",
+        "actions": ["ipython ./src/create_fragility_figure.py"],
+        "targets": [
+            OUTPUT_DIR / "figure_fragility.pdf",
+            OUTPUT_DIR / "figure_fragility.png",
+        ],
+        "file_dep": [
+            "./src/create_fragility_figure.py",
+            DATA_DIR / "bank_losses.parquet",
+            DATA_DIR / "uninsured_ratio.parquet",
+        ],
+        "clean": True,
+    }
+
 
 def task_outputs_ffiec():
     """Generate LaTeX tables and figures from FFIEC analysis results."""
@@ -423,6 +453,8 @@ def task_compile_latex():
             OUTPUT_DIR / "table1.tex",
             OUTPUT_DIR / "table_a1.tex",
             OUTPUT_DIR / "figure_a1.pdf",
+            OUTPUT_DIR / "table_etf.tex",
+            OUTPUT_DIR / "figure_fragility.pdf",
         ],
         "clean": True,
     }
