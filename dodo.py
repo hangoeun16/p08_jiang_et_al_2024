@@ -1,20 +1,34 @@
 """Run or update the project. This file uses the `doit` Python package (like make).
 
 Pipeline stages:
-  1. config       — create _data/ and _output/ directories
-  2. pull:wrds    — pull WRDS Call Report data, save to _data/*.parquet
-  3. pull:etf     — pull ETF prices via yfinance, save to _data/etf_prices.parquet
-  4. analysis     — run full MTM loss analysis, save tables/figure data to _data/
-  5. outputs      — generate Table 1, Table A1, and Figure A1 files in _output/
-  6. notebooks    — convert .py percent notebooks to .ipynb, execute, export to HTML
-  7. latex        — compile LaTeX report via latexmk
+  1. config            — create _data/ and _output/ directories
+
+  WRDS track (original Jiang et al. replication, 2021 Q4 – 2023 Q3):
+  2. pull:wrds         — pull WRDS Call Report data, save to _data/*.parquet
+  3. pull:etf          — pull ETF prices via yfinance
+  4. pull:struct_rel   — pull WRDS structural relationship (2022) for GSIB mapping
+  5. analysis          — run MTM loss analysis on WRDS data
+  6. outputs           — generate Table 1, Table A1, Figure A1 from WRDS results
+
+  FFIEC track (extension, 2023 Q4 – 2025 Q4):
+  7. pull:ffiec        — pull FFIEC Call Report data, save to _data/*_ffiec.parquet
+  8. pull:struct_rel_ffiec — pull structural relationship for FFIEC time range
+  9. analysis_ffiec    — run MTM loss analysis on FFIEC data
+  10. outputs_ffiec    — generate Table 1, Table A1, Figure A1 from FFIEC results
+
+  Shared / final:
+  11. convert_notebooks — convert .py percent notebooks → .ipynb via jupytext
+  12. run_notebooks     — execute notebooks and export to HTML
+  13. compile_latex     — build PDF report via latexmk
 
 Run all tasks:
     doit
 
-Run a specific task:
-    doit pull:wrds
-    doit analysis
+Run only WRDS track:
+    doit pull:wrds pull:etf pull:struct_rel analysis outputs
+
+Run only FFIEC track:
+    doit pull:ffiec pull:etf pull:struct_rel_ffiec analysis_ffiec outputs_ffiec
 """
 
 import sys
@@ -59,7 +73,7 @@ def jupytext_to_notebook(py_file):
 
 
 # ---------------------------------------------------------------------------
-# Tasks
+# Tasks — Configuration
 # ---------------------------------------------------------------------------
 
 
@@ -73,8 +87,15 @@ def task_config():
     }
 
 
+# ---------------------------------------------------------------------------
+# Tasks — Data pulling
+# ---------------------------------------------------------------------------
+
+
 def task_pull():
     """Pull raw data from external sources."""
+
+    # ---- WRDS Call Reports (original replication) ----
     yield {
         "name": "wrds",
         "doc": "Pull WRDS Call Report data (RCON/RCFD/RCFN series 1 and 2)",
@@ -93,6 +114,26 @@ def task_pull():
         "clean": [],
     }
 
+    # ---- FFIEC Call Reports (extension) ----
+    yield {
+        "name": "ffiec",
+        "doc": "Pull FFIEC Call Report data (RCON/RCFD/RCFN series, 2023-2025)",
+        "actions": [
+            "ipython ./src/settings.py",
+            "ipython ./src/pull_ffiec.py",
+        ],
+        "targets": [
+            DATA_DIR / "RCON_Series_1_ffiec.parquet",
+            DATA_DIR / "RCON_Series_2_ffiec.parquet",
+            DATA_DIR / "RCFD_Series_1_ffiec.parquet",
+            DATA_DIR / "RCFD_Series_2_ffiec.parquet",
+            DATA_DIR / "RCFN_Series_1_ffiec.parquet",
+        ],
+        "file_dep": ["./src/settings.py", "./src/pull_ffiec.py"],
+        "clean": [],
+    }
+
+    # ---- ETF prices (shared by both tracks) ----
     yield {
         "name": "etf",
         "doc": "Pull Treasury and MBS ETF prices via yfinance",
@@ -105,32 +146,51 @@ def task_pull():
         "clean": [],
     }
 
+    # ---- Structural relationships (2022, for WRDS track) ----
     yield {
         "name": "struct_rel",
-        "doc": "Pull WRDS structural relationship parquet for GSIB mapping",
+        "doc": "Pull structural relationship parquet for GSIB mapping (2022)",
         "actions": [
             "ipython ./src/settings.py",
-            "ipython ./src/pull_struct_rel_2022.py",
+            "ipython ./src/pull_struct_rel.py",
         ],
         "targets": [DATA_DIR / "struct_rel_2022.parquet"],
-        "file_dep": ["./src/settings.py", "./src/pull_struct_rel_2022.py"],
+        "file_dep": ["./src/settings.py", "./src/pull_struct_rel.py"],
+        "clean": [],
+    }
+
+    # ---- Structural relationships (2024, for FFIEC track) ----
+    yield {
+        "name": "struct_rel_ffiec",
+        "doc": "Pull structural relationship parquet for GSIB mapping (2024)",
+        "actions": [
+            "ipython ./src/settings.py",
+            "ipython ./src/pull_struct_rel.py -- --year 2024",
+        ],
+        "targets": [DATA_DIR / "struct_rel_2024.parquet"],
+        "file_dep": ["./src/settings.py", "./src/pull_struct_rel.py"],
         "clean": [],
     }
 
 
+# ---------------------------------------------------------------------------
+# Tasks — Analysis
+# ---------------------------------------------------------------------------
+
+
 def task_analysis():
-    """Run full MTM loss analysis and save results to _data/."""
+    """Run full MTM loss analysis on WRDS data and save results to _data/."""
     return {
         "actions": ["ipython ./src/run_analysis.py"],
         "targets": [
-        DATA_DIR / "bank_losses.parquet",
-        DATA_DIR / "uninsured_ratio.parquet",
-        DATA_DIR / "insured_coverage.parquet",
-        DATA_DIR / "table1.parquet",
-        DATA_DIR / "table_a1_panel_a.parquet",
-        DATA_DIR / "table_a1_panel_b.parquet",
-        DATA_DIR / "figure_a1_data.parquet",
-    ],
+            DATA_DIR / "bank_losses.parquet",
+            DATA_DIR / "uninsured_ratio.parquet",
+            DATA_DIR / "insured_coverage.parquet",
+            DATA_DIR / "table1.parquet",
+            DATA_DIR / "table_a1_panel_a.parquet",
+            DATA_DIR / "table_a1_panel_b.parquet",
+            DATA_DIR / "figure_a1_data.parquet",
+        ],
         "file_dep": [
             "./src/settings.py",
             "./src/run_analysis.py",
@@ -150,8 +210,45 @@ def task_analysis():
     }
 
 
+def task_analysis_ffiec():
+    """Run full MTM loss analysis on FFIEC data and save results to _data/."""
+    return {
+        "actions": ["ipython ./src/run_analysis.py -- --source ffiec"],
+        "targets": [
+            DATA_DIR / "bank_losses_ffiec.parquet",
+            DATA_DIR / "uninsured_ratio_ffiec.parquet",
+            DATA_DIR / "insured_coverage_ffiec.parquet",
+            DATA_DIR / "table1_ffiec.parquet",
+            DATA_DIR / "table_a1_panel_a_ffiec.parquet",
+            DATA_DIR / "table_a1_panel_b_ffiec.parquet",
+            DATA_DIR / "figure_a1_data_ffiec.parquet",
+        ],
+        "file_dep": [
+            "./src/settings.py",
+            "./src/run_analysis.py",
+            "./src/clean_data.py",
+            "./src/calc_mtm_losses.py",
+            "./src/calc_table1.py",
+            "./src/calc_summary_stats.py",
+            DATA_DIR / "RCON_Series_1_ffiec.parquet",
+            DATA_DIR / "RCON_Series_2_ffiec.parquet",
+            DATA_DIR / "RCFD_Series_1_ffiec.parquet",
+            DATA_DIR / "RCFD_Series_2_ffiec.parquet",
+            DATA_DIR / "RCFN_Series_1_ffiec.parquet",
+            DATA_DIR / "etf_prices.parquet",
+            DATA_DIR / "struct_rel_2024.parquet",
+        ],
+        "clean": [],
+    }
+
+
+# ---------------------------------------------------------------------------
+# Tasks — Outputs (tables, figures)
+# ---------------------------------------------------------------------------
+
+
 def task_outputs():
-    """Generate LaTeX tables and figures from analysis results."""
+    """Generate LaTeX tables and figures from WRDS analysis results."""
     yield {
         "name": "table1",
         "doc": "Generate Table 1 LaTeX file",
@@ -170,10 +267,10 @@ def task_outputs():
         "actions": ["ipython ./src/create_table_a1.py"],
         "targets": [OUTPUT_DIR / "table_a1.tex"],
         "file_dep": [
-        "./src/create_table_a1.py",
-        DATA_DIR / "table_a1_panel_a.parquet",
-        DATA_DIR / "table_a1_panel_b.parquet",
-    ],
+            "./src/create_table_a1.py",
+            DATA_DIR / "table_a1_panel_a.parquet",
+            DATA_DIR / "table_a1_panel_b.parquet",
+        ],
         "clean": True,
     }
 
@@ -219,6 +316,54 @@ def task_outputs():
         ],
         "clean": True,
     }
+
+
+def task_outputs_ffiec():
+    """Generate LaTeX tables and figures from FFIEC analysis results."""
+    yield {
+        "name": "table1",
+        "doc": "Generate Table 1 LaTeX file (FFIEC)",
+        "actions": ["ipython ./src/create_table1.py -- --source ffiec"],
+        "targets": [OUTPUT_DIR / "table1_ffiec.tex"],
+        "file_dep": [
+            "./src/create_table1.py",
+            DATA_DIR / "table1_ffiec.parquet",
+        ],
+        "clean": True,
+    }
+
+    yield {
+        "name": "table_a1",
+        "doc": "Generate Table A1 LaTeX file (FFIEC)",
+        "actions": ["ipython ./src/create_table_a1.py -- --source ffiec"],
+        "targets": [OUTPUT_DIR / "table_a1_ffiec.tex"],
+        "file_dep": [
+            "./src/create_table_a1.py",
+            DATA_DIR / "table_a1_panel_a_ffiec.parquet",
+            DATA_DIR / "table_a1_panel_b_ffiec.parquet",
+        ],
+        "clean": True,
+    }
+
+    yield {
+        "name": "figure_a1",
+        "doc": "Generate Figure A1 PDF and PNG (FFIEC)",
+        "actions": ["ipython ./src/create_figure_a1.py -- --source ffiec"],
+        "targets": [
+            OUTPUT_DIR / "figure_a1_ffiec.pdf",
+            OUTPUT_DIR / "figure_a1_ffiec.png",
+        ],
+        "file_dep": [
+            "./src/create_figure_a1.py",
+            DATA_DIR / "figure_a1_data_ffiec.parquet",
+        ],
+        "clean": True,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Tasks — Notebooks
+# ---------------------------------------------------------------------------
 
 
 def task_convert_notebooks():
@@ -272,6 +417,11 @@ def task_run_notebooks():
         prev_nb = nb
 
 
+# ---------------------------------------------------------------------------
+# Tasks — LaTeX
+# ---------------------------------------------------------------------------
+
+
 def task_compile_latex():
     """Compile the LaTeX report using latexmk."""
     latex_file = "./reports/main.tex"
@@ -285,8 +435,15 @@ def task_compile_latex():
             OUTPUT_DIR / "table1.tex",
             OUTPUT_DIR / "table_a1.tex",
             OUTPUT_DIR / "figure_a1.pdf",
+<<<<<<< Updated upstream
             OUTPUT_DIR / "table_etf.tex",
             OUTPUT_DIR / "figure_fragility.pdf",
+=======
+            # FFIEC outputs for comparison section
+            OUTPUT_DIR / "table1_ffiec.tex",
+            OUTPUT_DIR / "table_a1_ffiec.tex",
+            OUTPUT_DIR / "figure_a1_ffiec.pdf",
+>>>>>>> Stashed changes
         ],
         "clean": True,
     }
