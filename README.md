@@ -229,7 +229,7 @@ ruff check . --fix          # fix linting issues
 - **`calc_*.py`** — pure computation functions (no I/O)
 - **`create_*.py`** — generates output artifacts (LaTeX tables, PDF/PNG figures); supports `--source` flag
 - **`test_*.py`** — pytest unit tests
-- **`*_ffiec.parquet/tex/pdf/png`** — FFIEC extension outputs (suffix distinguishes from WRDS)
+- **`*_ffiec.parquet/tex/png`** — FFIEC extension outputs (suffix distinguishes from WRDS)
 
 ## Directory Notes
 
