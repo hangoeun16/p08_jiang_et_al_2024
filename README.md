@@ -237,3 +237,10 @@ ruff check . --fix          # fix linting issues
 - `_data/` and `_output/` are **gitignored** — they are fully reproducible by running `doit`
 - `data_manual/` is **version controlled** — for any data that cannot be automatically re-downloaded
 - `.env` must **never** be committed — use `.env.example` as the template
+
+## Acknowledgments
+
+This project builds on the previous year's FINM32900 project:
+[Monetary Tightening and U.S. Bank Fragility](https://github.com/jmbejara/p02a_monetary_tightening).
+
+Parts of the original repository were used as a starting point and were subsequently refactored, reorganized, and extended for this implementation.
