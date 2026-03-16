@@ -11,9 +11,11 @@ Saves the figure to _output/figure_a1.pdf and _output/figure_a1.png.
 
 Usage
 -----
-    python create_figure_a1.py
+    python create_figure_a1.py                # WRDS (default)
+    python create_figure_a1.py --source ffiec # FFIEC extension
 """
 
+import argparse
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
@@ -27,7 +29,7 @@ OUTPUT_DIR = Path(config("OUTPUT_DIR"))
 REPORT_DATE = config("REPORT_DATE")
 
 
-def load_figure_a1_data(data_dir=DATA_DIR):
+def load_figure_a1_data(data_dir=DATA_DIR, source="wrds"):
     """Load Table A1 panel data and extract aggregate figures for the chart.
 
     Returns
@@ -37,8 +39,9 @@ def load_figure_a1_data(data_dir=DATA_DIR):
         liability_items : dict mapping category name to $ trillions
         total_assets_t : total assets in $ trillions
     """
-    panel_a = pd.read_parquet(Path(data_dir) / "table_a1_panel_a.parquet")
-    panel_b = pd.read_parquet(Path(data_dir) / "table_a1_panel_b.parquet")
+    sfx = "_ffiec" if source == "ffiec" else ""
+    panel_a = pd.read_parquet(Path(data_dir) / f"table_a1_panel_a{sfx}.parquet")
+    panel_b = pd.read_parquet(Path(data_dir) / f"table_a1_panel_b{sfx}.parquet")
 
     agg_a = panel_a["Aggregate"]
     agg_b = panel_b["Aggregate"]
@@ -77,7 +80,7 @@ def load_figure_a1_data(data_dir=DATA_DIR):
     return asset_items, liability_items, total_assets_t
 
 
-def create_figure_a1(data_dir=DATA_DIR, output_dir=OUTPUT_DIR):
+def create_figure_a1(data_dir=DATA_DIR, output_dir=OUTPUT_DIR, source="wrds"):
     """Create and save Figure A1 as PDF and PNG.
 
     Produces two horizontal stacked bar charts:
@@ -88,8 +91,11 @@ def create_figure_a1(data_dir=DATA_DIR, output_dir=OUTPUT_DIR):
     ----------
     data_dir : Path
     output_dir : Path
+    source : str
+        'wrds' or 'ffiec'.
     """
-    asset_items, liability_items, total_assets_t = load_figure_a1_data(data_dir)
+    sfx = "_ffiec" if source == "ffiec" else ""
+    asset_items, liability_items, total_assets_t = load_figure_a1_data(data_dir, source)
 
     # --- Colors matching the paper ---
     asset_colors = ["#4472C4", "#6FA0D6", "#A9C4E0", "#D6C6A0", "#E8B87D"]
@@ -156,12 +162,15 @@ def create_figure_a1(data_dir=DATA_DIR, output_dir=OUTPUT_DIR):
 
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_dir / "figure_a1.pdf", dpi=150, bbox_inches="tight")
-    fig.savefig(output_dir / "figure_a1.png", dpi=150, bbox_inches="tight")
+    fig.savefig(output_dir / f"figure_a1{sfx}.pdf", dpi=150, bbox_inches="tight")
+    fig.savefig(output_dir / f"figure_a1{sfx}.png", dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print(f"Saved: {output_dir / 'figure_a1.pdf'}")
-    print(f"Saved: {output_dir / 'figure_a1.png'}")
+    print(f"Saved: {output_dir / f'figure_a1{sfx}.pdf'}")
+    print(f"Saved: {output_dir / f'figure_a1{sfx}.png'}")
 
 
 if __name__ == "__main__":
-    create_figure_a1()
+    parser = argparse.ArgumentParser(description="Generate Figure A1.")
+    parser.add_argument("--source", choices=["wrds", "ffiec"], default="wrds")
+    args = parser.parse_args()
+    create_figure_a1(source=args.source)

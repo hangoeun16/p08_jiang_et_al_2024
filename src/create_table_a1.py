@@ -5,9 +5,11 @@ writes a LaTeX table to _output/table_a1.tex for inclusion in the report.
 
 Usage
 -----
-    python create_table_a1.py
+    python create_table_a1.py                # WRDS (default)
+    python create_table_a1.py --source ffiec # FFIEC extension
 """
 
+import argparse
 import pandas as pd
 from pathlib import Path
 
@@ -18,9 +20,10 @@ OUTPUT_DIR = Path(config("OUTPUT_DIR"))
 REPORT_DATE = config("REPORT_DATE")
 
 
-def load_table_a1_panels(data_dir=DATA_DIR):
-    panel_a = pd.read_parquet(Path(data_dir) / "table_a1_panel_a.parquet")
-    panel_b = pd.read_parquet(Path(data_dir) / "table_a1_panel_b.parquet")
+def load_table_a1_panels(data_dir=DATA_DIR, source="wrds"):
+    sfx = "_ffiec" if source == "ffiec" else ""
+    panel_a = pd.read_parquet(Path(data_dir) / f"table_a1_panel_a{sfx}.parquet")
+    panel_b = pd.read_parquet(Path(data_dir) / f"table_a1_panel_b{sfx}.parquet")
     return panel_a, panel_b
 
 def _fmt(v) -> str:
@@ -95,10 +98,10 @@ def _table_header():
     return r"Category & Aggregate & Full sample & Small & Large non-GSIB & GSIB \\"
 
 
-def _caption_text():
+def _caption_text(report_date=REPORT_DATE):
     """Return the shared caption text fragment."""
     return (
-        rf"Balance Sheet Composition of U.S.\ Commercial Banks as of {REPORT_DATE}. "
+        rf"Balance Sheet Composition of U.S.\ Commercial Banks as of {report_date}. "
         r"Entries are percentages of total assets. "
         r"All numbers except for aggregate are based on sample averages "
         r"after winsorizing at the 5th and 95th percentiles. "
@@ -107,7 +110,7 @@ def _caption_text():
     )
 
 
-def format_table_a1_latex(panel_a, panel_b):
+def format_table_a1_latex(panel_a, panel_b, report_date=REPORT_DATE):
     """Generate LaTeX for Table A1 as two separate tables (Panel A and B)."""
     col_spec = "lrrrrr"
 
@@ -115,7 +118,7 @@ def format_table_a1_latex(panel_a, panel_b):
     lines_a = [
         r"\begin{table}[htbp]",
         r"\centering",
-        rf"\caption{{{_caption_text()}}}",
+        rf"\caption{{{_caption_text(report_date)}}}",
         r"\label{tab:table_a1}",
         r"\footnotesize",
         rf"\resizebox{{\textwidth}}{{!}}{{",
@@ -160,11 +163,13 @@ def format_table_a1_latex(panel_a, panel_b):
     return "\n".join(lines_a) + "\n\n\\clearpage\n\n" + "\n".join(lines_b)
 
 
-def create_table_a1(data_dir=DATA_DIR, output_dir=OUTPUT_DIR):
-    panel_a, panel_b = load_table_a1_panels(data_dir)
-    latex_str = format_table_a1_latex(panel_a, panel_b)
+def create_table_a1(data_dir=DATA_DIR, output_dir=OUTPUT_DIR, source="wrds"):
+    sfx = "_ffiec" if source == "ffiec" else ""
+    report_date = config("FFIEC_REPORT_DATE") if source == "ffiec" else REPORT_DATE
+    panel_a, panel_b = load_table_a1_panels(data_dir, source)
+    latex_str = format_table_a1_latex(panel_a, panel_b, report_date)
 
-    output_path = Path(output_dir) / "table_a1.tex"
+    output_path = Path(output_dir) / f"table_a1{sfx}.tex"
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(latex_str)
     print(f"Saved: {output_path}")
@@ -172,4 +177,7 @@ def create_table_a1(data_dir=DATA_DIR, output_dir=OUTPUT_DIR):
 
 
 if __name__ == "__main__":
-    create_table_a1()
+    parser = argparse.ArgumentParser(description="Generate Table A1 LaTeX file.")
+    parser.add_argument("--source", choices=["wrds", "ffiec"], default="wrds")
+    args = parser.parse_args()
+    create_table_a1(source=args.source)
