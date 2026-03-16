@@ -6,7 +6,7 @@ Implements the MTM loss methodology from Section II of the paper:
     where multiplier = ΔiShares MBS ETF / ΔS&P Treasury Bond Index
 
 Bank size classification (Jiang et al. Table 1):
-  - GSIB: bank regulators’ definition as of Q1 2022 + 
+  - GSIB: bank regulators' definition as of Q1 2022 + 
           U.S. chartered banks affiliated with holding companies that are 
           classified as GSIB.
   - Large non-GSIB: total_assets > $1.384B and not GSIB
@@ -28,12 +28,12 @@ distribution across the full bucket.
 
 Usage
 -----
-    from calc_mtm_losses import calc_bank_losses, classify_banks
+    from calc_mtm_losses import calc_bank_losses, classify_banks, build_gsib_ids
 """
 
 import numpy as np
 import pandas as pd
-from pull_struct_rel_2022 import load_struct_rel_2022
+from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # GSIB bank IDs (WRDS rssd9001 identifiers)
@@ -49,21 +49,6 @@ GSIB_PARENT_IDS = {
     35301,    # STATE STREET
     3587146   # BNY MELLON
 }
-
-struct_rel = load_struct_rel_2022()
-
-# Broader GSIB mapping using professor-provided structural relationship data:
-# 1) affiliates whose ultimate parent is a GSIB holding company
-# 2) affiliates whose immediate parent is a GSIB holding company
-# 3) GSIB parent entities themselves if they appear in the sample
-
-GSIB_IDS = set(
-    struct_rel.loc[
-        struct_rel["ultimate_rssd_id"].isin(GSIB_PARENT_IDS)
-        | struct_rel["immediate_rssd_id"].isin(GSIB_PARENT_IDS),
-        "focal_rssd_id"
-    ].dropna().astype(int)
-) | GSIB_PARENT_IDS
 
 # Threshold for large vs. small classification ($1.384B in thousands)
 LARGE_THRESHOLD = 1_384_000  # $1.384B in $thousands
@@ -88,7 +73,46 @@ BUCKET_TO_ETF = {
 BLEND_5Y_15Y = (("iShares 7-10", 0.70), ("iShares 10-20", 0.30))
 
 
-def classify_banks(total_assets_df):
+# ---------------------------------------------------------------------------
+# GSIB ID construction
+# ---------------------------------------------------------------------------
+
+
+def build_gsib_ids(struct_rel: pd.DataFrame, parent_ids: set[int] = GSIB_PARENT_IDS) -> set[int]:
+    """Build the full set of GSIB-affiliated bank IDs from structural relationships.
+
+    Includes:
+      1) affiliates whose ultimate parent is a GSIB holding company
+      2) affiliates whose immediate parent is a GSIB holding company
+      3) GSIB parent entities themselves
+
+    Parameters
+    ----------
+    struct_rel : pd.DataFrame
+        Structural relationship data with columns: focal_rssd_id,
+        ultimate_rssd_id, immediate_rssd_id.
+    parent_ids : set[int]
+        GSIB parent holding company IDs.
+
+    Returns
+    -------
+    set[int]
+        All bank IDs classified as GSIB affiliates.
+    """
+    gsib_ids = set(
+        struct_rel.loc[
+            struct_rel["ultimate_rssd_id"].isin(parent_ids)
+            | struct_rel["immediate_rssd_id"].isin(parent_ids),
+            "focal_rssd_id",
+        ]
+        .dropna()
+        .astype(int)
+    ) | parent_ids
+
+    return gsib_ids
+
+
+def classify_banks(total_assets_df, gsib_ids: set[int] | None = None):
     """Add a 'size_category' column to the total assets DataFrame.
 
     Parameters
@@ -96,6 +120,10 @@ def classify_banks(total_assets_df):
     total_assets_df : pd.DataFrame
         Output of clean_data.get_total_assets(). Must have 'bank_id' and
         'total_assets' columns.
+    gsib_ids : set[int] or None
+        Set of bank IDs classified as GSIB, from build_gsib_ids().
+        If None, falls back to loading struct_rel_2022 for backwards
+        compatibility with existing code.
 
     Returns
     -------
@@ -103,10 +131,24 @@ def classify_banks(total_assets_df):
         Same as input with added 'size_category' column:
         'GSIB', 'Large non-GSIB', or 'Small'.
     """
+    if gsib_ids is None:
+        from pull_struct_rel import load_struct_rel_2022
+        gsib_ids = build_gsib_ids(load_struct_rel_2022())
+
+    # Ensure matching works regardless of int vs str bank_id types
+    gsib_ids_str = {str(x) for x in gsib_ids}
+    gsib_ids_int = set()
+    for x in gsib_ids:
+        try:
+            gsib_ids_int.add(int(x))
+        except (ValueError, TypeError):
+            pass
+    gsib_ids_both = gsib_ids | gsib_ids_str | gsib_ids_int
+
     df = total_assets_df.copy()
 
     def _classify(row):
-        if row["bank_id"] in GSIB_IDS:
+        if row["bank_id"] in gsib_ids_both:
             return "GSIB"
         elif row["total_assets"] > LARGE_THRESHOLD:
             return "Large non-GSIB"
@@ -188,16 +230,16 @@ def calc_price_changes(etf_quarterly, start_date, end_date):
 
 def _aggregate_by_bank(df):
     """Sum maturity bucket columns by bank_id, returning one row per bank.
- 
+
     Groups the input DataFrame by (bank_id, bank_name) and sums all
     available maturity bucket columns defined in BUCKET_COLS.
- 
+
     Parameters
     ----------
     df : pd.DataFrame
         Holdings data with 'bank_id', 'bank_name', and one or more maturity
         bucket columns from BUCKET_COLS.
- 
+
     Returns
     -------
     pd.DataFrame
