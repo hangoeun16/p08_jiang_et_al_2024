@@ -461,9 +461,9 @@ def task_compile_latex():
 
 
 def task_ffiec():
-    """Run the entire FFIEC extension pipeline (pull → analysis → outputs)."""
+    """Run the entire FFIEC extension pipeline (pull → analysis → outputs → PDF)."""
     return {
-        "actions": None,
+        "actions": ["latexmk -xelatex -cd -quiet ./reports/main.tex"],
         "task_dep": [
             "config",
             "pull:ffiec",

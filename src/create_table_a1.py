@@ -110,7 +110,7 @@ def _caption_text(report_date=REPORT_DATE):
     )
 
 
-def format_table_a1_latex(panel_a, panel_b, report_date=REPORT_DATE):
+def format_table_a1_latex(panel_a, panel_b, report_date=REPORT_DATE, label_suffix=""):
     """Generate LaTeX for Table A1 as two separate tables (Panel A and B)."""
     col_spec = "lrrrrr"
 
@@ -123,7 +123,7 @@ def format_table_a1_latex(panel_a, panel_b, report_date=REPORT_DATE):
         r"\begin{table}[htbp]",
         r"\centering",
         rf"\caption{{{_caption_text(report_date)}}}",
-        r"\label{tab:table_a1}",
+        rf"\label{{tab:table_a1{label_suffix}}}",
         r"\footnotesize",
         rf"\resizebox{{\textwidth}}{{!}}{{",
         rf"\begin{{tabular}}{{{col_spec}}}",
@@ -146,7 +146,7 @@ def format_table_a1_latex(panel_a, panel_b, report_date=REPORT_DATE):
         r"\begin{table}[htbp]",
         r"\centering",
         r"\caption{Balance Sheet Composition (continued).}",
-        r"\label{tab:table_a1_b}",
+        rf"\label{{tab:table_a1_b{label_suffix}}}",
         r"\footnotesize",
         rf"\resizebox{{\textwidth}}{{!}}{{",
         rf"\begin{{tabular}}{{{col_spec}}}",
@@ -171,7 +171,7 @@ def create_table_a1(data_dir=DATA_DIR, output_dir=OUTPUT_DIR, source="wrds"):
     sfx = "_ffiec" if source == "ffiec" else ""
     report_date = config("FFIEC_REPORT_DATE") if source == "ffiec" else REPORT_DATE
     panel_a, panel_b = load_table_a1_panels(data_dir, source)
-    latex_str = format_table_a1_latex(panel_a, panel_b, report_date)
+    latex_str = format_table_a1_latex(panel_a, panel_b, report_date, label_suffix=sfx)
 
     output_path = Path(output_dir) / f"table_a1{sfx}.tex"
     output_path.parent.mkdir(parents=True, exist_ok=True)

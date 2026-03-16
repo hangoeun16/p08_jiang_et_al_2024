@@ -82,7 +82,7 @@ def load_table1(data_dir=DATA_DIR, source="wrds"):
     return pd.read_parquet(Path(data_dir) / f"table1{sfx}.parquet")
 
 
-def format_table1_latex(table1, report_date=REPORT_DATE, mtm_end_date=MTM_END_DATE):
+def format_table1_latex(table1, report_date=REPORT_DATE, mtm_end_date=MTM_END_DATE, label_suffix=""):
     """Convert Table 1 DataFrame to a LaTeX tabular string.
  
     Applies paper-consistent unit formatting to dollar-denominated rows
@@ -107,7 +107,7 @@ def format_table1_latex(table1, report_date=REPORT_DATE, mtm_end_date=MTM_END_DA
         r"Loss calculations follow Jiang et al.\ (2024). "
         r"Aggregate Loss is in \$billions. "
         r"Small banks have total assets $\leq$ \$1.384B; GSIBs are global systemically important banks.}",
-        r"\label{tab:table1}",
+        rf"\label{{tab:table1{label_suffix}}}",
         r"\small",
         r"\begin{tabular}{lrrrr}",
         r"\toprule",
@@ -152,7 +152,7 @@ def create_table1(data_dir=DATA_DIR, output_dir=OUTPUT_DIR, source="wrds"):
     mtm_end_date = config("FFIEC_MTM_END_DATE") if source == "ffiec" else MTM_END_DATE
 
     table1 = load_table1(data_dir, source)
-    latex_str = format_table1_latex(table1, report_date, mtm_end_date)
+    latex_str = format_table1_latex(table1, report_date, mtm_end_date, label_suffix=sfx)
  
     output_path = Path(output_dir) / f"table1{sfx}.tex"
     output_path.parent.mkdir(parents=True, exist_ok=True)
