@@ -327,6 +327,12 @@ def build_table_a1_raw_frames(
     else:
         rcfn_q_df = _filter_date(rcfn_df, report_date).sort_values("rssd9001").set_index("rssd9001")
 
+    # Ensure numeric index for consistent merging (FFIEC uses str, WRDS uses int)
+    for df in [rcon_df, rcfd_df]:
+        df.index = pd.to_numeric(df.index, errors="coerce")
+    if rcfn_q_df is not None:
+        rcfn_q_df.index = pd.to_numeric(rcfn_q_df.index, errors="coerce")
+
     return rcon_df, rcfd_df, rcfn_q_df
 
 
@@ -480,8 +486,11 @@ def build_table_a1_assets_from_raw(
     bank_asset = bank_asset.drop(columns=existing_domestic)
 
     bank_asset = bank_asset.reset_index().rename(columns={"rssd9001": "bank_id"})
+    bank_asset["bank_id"] = pd.to_numeric(bank_asset["bank_id"], errors="coerce")
+    ta_merge = total_assets_df[["bank_id", "bank_name", "size_category"]].copy()
+    ta_merge["bank_id"] = pd.to_numeric(ta_merge["bank_id"], errors="coerce")
     bank_asset = bank_asset.merge(
-        total_assets_df[["bank_id", "bank_name", "size_category"]],
+        ta_merge,
         on="bank_id",
         how="left",
     )
