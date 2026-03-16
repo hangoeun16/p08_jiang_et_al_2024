@@ -16,13 +16,12 @@ The pipeline uses Q1 2022 WRDS Call Report balance sheet data and iShares ETF pr
 
 | Task | Joe Wang | Summer Han |
 |------|----------|------------|
-| refactoring previous group's code | X |  |
-| write up tex file | X | |
+| refactoring previous group's code | X | X  |
+| write up tex file | X | X |
 | create tex file pipeline | X | |
 | data tour and summary stats | X | |
-| web scraping off FFIEC | | X |
 | create pipeline for data extension from 2023-2025 | | X |
-| fix WRDS data queries | | X |
+| Dual-source pipeline architecture| | X |
 
 ---
 
