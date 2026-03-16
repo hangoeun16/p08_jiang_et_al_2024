@@ -117,6 +117,7 @@ p08_jiang_et_al_2024/
 │   │
 │   ├── 01_data_tour.py          # Notebook: data overview (percent format → .ipynb)
 │   ├── 02_replication.py        # Notebook: replication results + updated analysis
+│   ├── 03_extension.py          # Notebook: extension results + updated analysis
 │   │
 │   ├── test_calc_mtm_losses.py  # Unit tests for MTM calculation (21 tests)
 │   └── test_clean_data.py       # Unit tests for data cleaning
