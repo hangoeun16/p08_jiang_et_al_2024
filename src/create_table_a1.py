@@ -114,6 +114,10 @@ def format_table_a1_latex(panel_a, panel_b, report_date=REPORT_DATE):
     """Generate LaTeX for Table A1 as two separate tables (Panel A and B)."""
     col_spec = "lrrrrr"
 
+    # Convert report_date to quarter label (e.g. "2022-03-31" → "Q1 2022")
+    rd = pd.Timestamp(report_date)
+    quarter_label = f"Q{rd.quarter} {rd.year}"
+
     # --- Panel A ---
     lines_a = [
         r"\begin{table}[htbp]",
@@ -126,7 +130,7 @@ def format_table_a1_latex(panel_a, panel_b, report_date=REPORT_DATE):
         r"\toprule",
         _table_header(),
         r"\midrule",
-        r"\multicolumn{6}{c}{\textbf{Panel A: Bank Asset Composition, Q1 2022}} \\",
+        rf"\multicolumn{{6}}{{c}}{{\textbf{{Panel A: Bank Asset Composition, {quarter_label}}}}} \\",
         r"\midrule",
     ]
     lines_a += _format_panel_rows(panel_a)
@@ -149,7 +153,7 @@ def format_table_a1_latex(panel_a, panel_b, report_date=REPORT_DATE):
         r"\toprule",
         _table_header(),
         r"\midrule",
-        r"\multicolumn{6}{c}{\textbf{Panel B: Bank Liability Composition, Q1 2022}} \\",
+        rf"\multicolumn{{6}}{{c}}{{\textbf{{Panel B: Bank Liability Composition, {quarter_label}}}}} \\",
         r"\midrule",
     ]
     lines_b += _format_panel_rows(panel_b)
